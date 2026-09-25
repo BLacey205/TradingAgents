@@ -20,6 +20,7 @@ from rich.table import Table
 from rich.text import Text
 
 from cli.announcements import display_announcements, fetch_announcements
+from cli.models import AnalystType
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import (
     ask_anthropic_effort,
@@ -32,7 +33,9 @@ from cli.utils import (
     confirm_ollama_endpoint,
     detect_asset_type,
     ensure_api_key,
+    filter_analysts_for_asset_type,
     get_ticker,
+    normalize_ticker_symbol,
     prompt_openai_compatible_url,
     resolve_backend_url,
     select_analysts,
@@ -1280,20 +1283,20 @@ def run_analysis(checkpoint: bool | None = None):
         display_complete_report(final_state)
 
 
-@app.command()
-def analyze(
-    checkpoint: bool | None = typer.Option(
-        None,
-        "--checkpoint/--no-checkpoint",
-        help="Enable/disable checkpoint-resume (save state after each node so a "
-        "crashed run can resume). Omit to honor TRADINGAGENTS_CHECKPOINT_ENABLED.",
-    ),
-    clear_checkpoints: bool = typer.Option(
-        False,
-        "--clear-checkpoints",
-        help="Delete all saved checkpoints before running (force fresh start).",
-    ),
-):
+_CHECKPOINT_OPTION = typer.Option(
+    None,
+    "--checkpoint/--no-checkpoint",
+    help="Enable/disable checkpoint-resume (save state after each node so a "
+    "crashed run can resume). Omit to honor TRADINGAGENTS_CHECKPOINT_ENABLED.",
+)
+_CLEAR_CHECKPOINTS_OPTION = typer.Option(
+    False,
+    "--clear-checkpoints",
+    help="Delete all saved checkpoints before running (force fresh start).",
+)
+
+
+def _analyze(checkpoint: bool | None, clear_checkpoints: bool) -> None:
     if clear_checkpoints:
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
@@ -1311,6 +1314,129 @@ def analyze(
             err=True,
         )
         raise typer.Exit(code=1) from None
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    checkpoint: bool | None = _CHECKPOINT_OPTION,
+    clear_checkpoints: bool = _CLEAR_CHECKPOINTS_OPTION,
+):
+    """Run the interactive analysis when no command is given."""
+    # A bare `tradingagents` (optionally with the checkpoint flags) keeps
+    # starting the interactive analysis, as it did when `analyze` was the
+    # only command.
+    if ctx.invoked_subcommand is None:
+        _analyze(checkpoint, clear_checkpoints)
+
+
+@app.command()
+def analyze(
+    checkpoint: bool | None = _CHECKPOINT_OPTION,
+    clear_checkpoints: bool = _CLEAR_CHECKPOINTS_OPTION,
+):
+    """Interactively analyze one ticker on one date."""
+    _analyze(checkpoint, clear_checkpoints)
+
+
+def _parse_date(value: str, name: str) -> str:
+    try:
+        return datetime.datetime.strptime(value, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError:
+        raise typer.BadParameter(f"{name} must be YYYY-MM-DD, got {value!r}") from None
+
+
+@app.command()
+def backtest(
+    ticker: str = typer.Argument(..., help="Ticker to backtest, e.g. NVDA or BTC-USD."),
+    start: str = typer.Option(..., "--start", help="First date (YYYY-MM-DD)."),
+    end: str = typer.Option(..., "--end", help="Last date (YYYY-MM-DD)."),
+    frequency: str = typer.Option(
+        "weekly", "--frequency", "-f", help="How often to decide: daily, weekly or monthly.",
+    ),
+    holding_days: int = typer.Option(
+        5, "--holding-days", min=1, help="Price bars each position is held for scoring.",
+    ),
+    analysts: str = typer.Option(
+        "market,social,news,fundamentals", "--analysts",
+        help="Comma-separated analysts to run (fundamentals is dropped for crypto).",
+    ),
+    benchmark: str | None = typer.Option(
+        None, "--benchmark", help="Benchmark symbol (default: SPY or the exchange's index).",
+    ),
+    long_only: bool = typer.Option(
+        False, "--long-only", help="Treat Underweight/Sell as flat instead of short.",
+    ),
+    use_memory: bool = typer.Option(
+        False, "--use-memory",
+        help="Keep the decision memory log on. Off by default: its reflections read "
+        "prices after the simulated date and would write to your real log.",
+    ),
+    output_dir: str | None = typer.Option(
+        None, "--output-dir",
+        help="Where to write results. Re-running with the same directory resumes.",
+    ),
+):
+    """Run the agents on a schedule of past dates and score the calls.
+
+    Models and provider come from TRADINGAGENTS_* environment variables (see
+    .env.example), so the run is fully non-interactive.
+    """
+    from tradingagents.backtest import FREQUENCIES, run_backtest
+
+    start = _parse_date(start, "--start")
+    end = _parse_date(end, "--end")
+    if start > end:
+        raise typer.BadParameter("--start must be on or before --end")
+    if frequency not in FREQUENCIES:
+        raise typer.BadParameter(f"--frequency must be one of {', '.join(FREQUENCIES)}")
+
+    symbol = normalize_ticker_symbol(ticker)
+    asset_type = detect_asset_type(symbol)
+    try:
+        selected = [AnalystType(a.strip()) for a in analysts.split(",") if a.strip()]
+    except ValueError as exc:
+        raise typer.BadParameter(f"--analysts: {exc}") from None
+    selected = filter_analysts_for_asset_type(selected, asset_type)
+    if not selected:
+        raise typer.BadParameter("--analysts must name at least one analyst")
+
+    console.print(
+        f"[bold]Backtesting {symbol}[/bold] {start} → {end} ({frequency}, "
+        f"hold {holding_days} bars) with {DEFAULT_CONFIG['llm_provider']} / "
+        f"{DEFAULT_CONFIG['deep_think_llm']}"
+    )
+
+    def _progress(record, i, total):
+        outcome = (
+            f"[red]error: {record.error}[/red]" if record.error else f"[green]{record.rating}[/green]"
+        )
+        console.print(f"  [{i}/{total}] {record.trade_date}  {outcome}")
+
+    try:
+        result = run_backtest(
+            symbol,
+            start,
+            end,
+            frequency=frequency,
+            holding_days=holding_days,
+            selected_analysts=[a.value for a in selected],
+            asset_type=asset_type.value,
+            benchmark=benchmark,
+            long_only=long_only,
+            use_memory=use_memory,
+            output_dir=Path(output_dir) if output_dir else None,
+            on_progress=_progress,
+        )
+    except ValueError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+
+    from tradingagents.backtest import render_summary
+
+    console.print()
+    console.print(Markdown(render_summary(result)))
+    console.print(f"\nResults written to [cyan]{result.output_dir}[/cyan]")
 
 
 if __name__ == "__main__":

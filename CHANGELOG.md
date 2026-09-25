@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
+## [Unreleased]
+
+### Added
+
+- **Backtest runner.** `tradingagents backtest TICKER --start ... --end ...` (and
+  `tradingagents.backtest.run_backtest`) runs the agents on a daily, weekly, or
+  monthly schedule of past dates and scores each rating against forward returns:
+  hit rate, per-decision and compounded return versus the benchmark, max
+  drawdown, and LLM usage. Runs resume from `decisions.jsonl`, and the memory
+  log is off by default so live-price reflections cannot leak into later dates.
+
+### Changed
+
+- **The CLI has subcommands.** `tradingagents` (with or without
+  `--checkpoint`) still starts the interactive analysis; `tradingagents analyze`
+  and the new `tradingagents backtest` are explicit commands.
+
 ## [0.3.2] — 2026-09-25
 
 Data-freshness and robustness patch: look-ahead-safe news windows, same-day
