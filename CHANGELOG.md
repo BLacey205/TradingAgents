@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
+## [0.3.2] — 2026-09-25
+
+Data-freshness and robustness patch: look-ahead-safe news windows, same-day
+price freshness, a clean CLI failure on unusable terminals, and fewer wasted
+structured-output round trips.
+
+### Fixed
+
+- **Yahoo news window is UTC and end-exclusive.** The upper bound was inclusive,
+  so an article stamped exactly midnight after `end_date` leaked into a
+  historical run, and naive/offset-aware timestamps were compared in host-local
+  time. Every operand is now normalized to UTC over a half-open
+  `[start, end + 1 day)` window. (#1126)
+- **Same-day OHLCV cache refreshes.** A run started before the day's bar was
+  final cached that snapshot for every later run, feeding a stale close into
+  technical analysis. A TTL now governs the current-day cache; historical caches
+  stay immutable. (#1150)
+- **Unusable terminals fail cleanly.** Windows consoles without a screen buffer
+  raised `NoConsoleScreenBufferError` before the first prompt; the CLI now
+  reports the problem with guidance instead of a `prompt_toolkit` traceback.
+  (#1138)
+- **Schema-only structured agents stop priming tool calls.** The no-tool
+  sentiment analyst advertised tools, so the model emitted an unknown
+  `web_search` call and the typed output was discarded for a free-text retry;
+  the constraint is now stated once via a shared `NO_EXTERNAL_TOOLS`. (#1130)
+
 ## [0.3.1] — 2026-07-05
 
 Correctness and stability patch: data look-ahead, graph-router crash-safety,
