@@ -262,6 +262,29 @@ ta = TradingAgentsGraph(config=config)
 _, decision = ta.propagate("NVDA", "2026-01-15")
 ```
 
+### Backtesting
+
+`tradingagents backtest` runs the full agent pipeline on a schedule of past dates and scores every call against what the price did next. It is non-interactive: the provider and models come from your `.env` (`TRADINGAGENTS_LLM_PROVIDER`, `TRADINGAGENTS_DEEP_THINK_LLM`, `TRADINGAGENTS_QUICK_THINK_LLM`).
+
+```bash
+tradingagents backtest NVDA --start 2025-01-01 --end 2025-06-30              # weekly, 5-day hold
+tradingagents backtest BTC-USD --start 2025-01-01 --end 2025-12-31 -f monthly --holding-days 20
+tradingagents backtest AAPL --start 2025-01-01 --end 2025-03-31 --long-only --analysts market,news
+```
+
+Each rating becomes a position (Buy +1, Overweight +0.5, Hold 0, Underweight -0.5, Sell -1; `--long-only` makes the bearish ratings flat), entered at the trade date's close and held for `--holding-days` price bars. The scorecard reports the hit rate, the average and compounded return against the benchmark, max drawdown, and LLM calls and tokens used. Results go to `~/.tradingagents/logs/backtests/<TICKER>_<start>_<end>/` (`summary.md`, `summary.json`, `results.csv`). Every run is a full multi-agent analysis, so start with a short range to gauge cost.
+
+- **Resumable.** Progress is saved after each date. Re-running the same command (or the same `--output-dir`) skips completed dates and retries failed ones.
+- **Isolated from your decision log.** The memory log is off during backtests, because its reflections read prices after the simulated date and would leak outcomes into later decisions. `--use-memory` turns it back on.
+- **One sample, not a guarantee.** News and social sources return current content even for past dates (see [Reproducibility](#reproducibility)), no transaction costs are modelled, and LLM output varies between runs.
+
+```python
+from tradingagents.backtest import run_backtest
+
+result = run_backtest("NVDA", "2025-01-01", "2025-03-31", frequency="weekly", holding_days=5)
+print(result.summary["hit_rate"], result.summary["cumulative_strategy_return"])
+```
+
 ## Reproducibility
 
 TradingAgents is LLM-driven, so two runs of the same ticker and date can differ. This is expected for a research tool built on language models, not a defect. The variation comes from a few distinct sources, and it helps to separate them.
