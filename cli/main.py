@@ -1411,6 +1411,8 @@ def backtest(
         outcome = (
             f"[red]error: {record.error}[/red]" if record.error else f"[green]{record.rating}[/green]"
         )
+        if record.confidence is not None:
+            outcome += f" ({record.confidence}% confident)"
         console.print(f"  [{i}/{total}] {record.trade_date}  {outcome}")
 
     try:

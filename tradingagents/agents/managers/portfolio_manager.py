@@ -53,6 +53,8 @@ def create_portfolio_manager(llm):
 - **Underweight**: Reduce exposure, take partial profits
 - **Sell**: Exit position or avoid entry
 
+**Confidence**: also state, from 0 to 100, how likely the rating's direction is to prove right over your time horizon (50 = coin flip). Be calibrated rather than bold: weigh how strongly the evidence actually agrees.
+
 **Context:**
 - Research Manager's investment plan: **{research_plan}**
 - Trader's transaction proposal: **{trader_plan}**

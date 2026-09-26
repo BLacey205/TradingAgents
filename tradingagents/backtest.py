@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 from langchain_core.callbacks import BaseCallbackHandler
 
-from tradingagents.agents.utils.rating import RATINGS_5_TIER
+from tradingagents.agents.utils.rating import RATINGS_5_TIER, parse_confidence
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +126,7 @@ class DecisionRecord:
 
     trade_date: str
     rating: str | None = None
+    confidence: int | None = None
     error: str | None = None
     seconds: float | None = None
     llm_calls: int | None = None
@@ -179,6 +180,51 @@ def _min_spacing_bdays(dates: list[str]) -> int | None:
     return int(min(np.busday_count(a, b) for a, b in zip(ordered, ordered[1:], strict=False)))
 
 
+# Stated-confidence buckets for the calibration table: [low, high).
+CONFIDENCE_BUCKETS: tuple[tuple[int, int], ...] = (
+    (0, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 101),
+)
+
+
+def calibration(records: list[DecisionRecord]) -> dict[str, Any]:
+    """Compare stated confidence with how often directional calls were right.
+
+    Only scored Buy/Overweight/Underweight/Sell calls that carry a confidence
+    count: a call is right when the price moved in the called direction over
+    the holding window. Hold has no direction to check, so it is left out.
+    """
+    calls = [
+        r for r in records
+        if r.exposure and r.raw_return is not None and r.confidence is not None
+    ]
+    if not calls:
+        return {"confidence_calls": 0, "avg_confidence": None, "confidence_hit_rate": None,
+                "brier_score": None, "calibration": []}
+
+    def hit(r: DecisionRecord) -> float:
+        return 1.0 if r.exposure * r.raw_return > 0 else 0.0
+
+    rows = []
+    for low, high in CONFIDENCE_BUCKETS:
+        bucket = [r for r in calls if low <= r.confidence < high]
+        if bucket:
+            rows.append({
+                "range": f"{low}-{min(high - 1, 100)}",
+                "calls": len(bucket),
+                "avg_confidence": _mean([r.confidence / 100 for r in bucket]),
+                "hit_rate": _mean([hit(r) for r in bucket]),
+            })
+    return {
+        "confidence_calls": len(calls),
+        "avg_confidence": _mean([r.confidence / 100 for r in calls]),
+        "confidence_hit_rate": _mean([hit(r) for r in calls]),
+        # Mean squared gap between stated probability and outcome: 0 is perfect,
+        # 0.25 is what always saying 50% scores.
+        "brier_score": _mean([(r.confidence / 100 - hit(r)) ** 2 for r in calls]),
+        "calibration": rows,
+    }
+
+
 def summarize(records: list[DecisionRecord], holding_days: int) -> dict[str, Any]:
     """Aggregate scored records into the backtest scorecard."""
     decided = [r for r in records if r.rating and not r.error]
@@ -219,6 +265,7 @@ def summarize(records: list[DecisionRecord], holding_days: int) -> dict[str, Any
         "cumulative_benchmark_return": _compound(bench),
         "max_drawdown": _max_drawdown(strategy) if strategy else None,
         "overlapping_windows": overlapping,
+        **calibration(scored),
         "llm_calls": _total("llm_calls"),
         "tokens_in": _total("tokens_in"),
         "tokens_out": _total("tokens_out"),
@@ -343,12 +390,14 @@ class Backtester:
         before = self._usage()
         started = time.monotonic()
         try:
-            _, rating = self.graph.propagate(
+            state, rating = self.graph.propagate(
                 self.ticker, trade_date, asset_type=self.asset_type,
             )
             if rating not in RATINGS_5_TIER:
                 raise ValueError(f"unrecognised rating {rating!r}")
             record.rating = rating
+            if isinstance(state, dict):
+                record.confidence = parse_confidence(state.get("final_trade_decision", ""))
         except Exception as exc:
             if not self.continue_on_error:
                 raise
@@ -473,6 +522,7 @@ def render_summary(result: BacktestResult) -> str:
             "period), so cumulative figures and drawdown double-count returns. Use a "
             "sparser schedule or a shorter holding period for a compounding view.",
         ]
+    lines += _render_calibration(s)
     lines += [
         "",
         "Positions enter at the trade date's close and exit after the holding period. "
@@ -481,6 +531,38 @@ def render_summary(result: BacktestResult) -> str:
         "runs, so treat one backtest as a single sample.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _render_calibration(s: dict[str, Any]) -> list[str]:
+    if not s.get("confidence_calls"):
+        return []
+    gap = s["avg_confidence"] - s["confidence_hit_rate"]
+    if abs(gap) < 0.05:
+        verdict = "well calibrated"
+    elif gap > 0:
+        verdict = f"overconfident by {gap * 100:.0f} points"
+    else:
+        verdict = f"underconfident by {-gap * 100:.0f} points"
+    lines = [
+        "",
+        "## Confidence calibration",
+        "",
+        f"Across {s['confidence_calls']} directional calls the agents stated "
+        f"{_rate(s['avg_confidence'])} confidence on average and were right "
+        f"{_rate(s['confidence_hit_rate'])} of the time: {verdict}. "
+        f"Brier score {s['brier_score']:.3f} (0 is perfect; always saying 50% scores 0.250).",
+        "",
+        "| Stated confidence | Calls | Avg stated | Actually right |",
+        "|---|---|---|---|",
+    ]
+    lines += [
+        f"| {row['range']}% | {row['calls']} | {_rate(row['avg_confidence'])} | "
+        f"{_rate(row['hit_rate'])} |"
+        for row in s["calibration"]
+    ]
+    if s["confidence_calls"] < 20:
+        lines += ["", f"> Only {s['confidence_calls']} calls: too few to judge calibration reliably."]
+    return lines
 
 
 def write_results(result: BacktestResult) -> None:

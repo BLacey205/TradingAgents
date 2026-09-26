@@ -6,6 +6,9 @@ The same five-tier scale (Buy, Overweight, Hold, Underweight, Sell) is used by:
 - The signal processor (rating extracted for downstream consumers)
 - The memory log (rating tag stored alongside each decision entry)
 
+The Portfolio Manager also states a 0-100 confidence, read back by
+``parse_confidence`` for backtest calibration.
+
 Centralising it here avoids drift between those call sites.
 """
 
@@ -46,3 +49,30 @@ def parse_rating(text: str, default: str = "Hold") -> str:
                 return clean.capitalize()
 
     return default
+
+
+# Matches "Confidence: 72%" / "**Confidence**: 72" / "confidence - 0.72" on one line.
+_CONFIDENCE_RE = re.compile(
+    r"confidence\W*?[:\-][\s*]*(\d{1,3}(?:\.\d+)?)\s*(%)?", re.IGNORECASE,
+)
+
+
+def parse_confidence(text: str) -> int | None:
+    """Extract the Portfolio Manager's stated confidence as an int percentage.
+
+    Reads the first labelled ``Confidence: N`` line; fractions such as ``0.72``
+    without a percent sign read as 72. Returns ``None`` when no confidence is
+    stated or the number is outside 0-100, so older decisions and free-text
+    fallbacks simply carry no confidence rather than a guessed one.
+    """
+    for line in (text or "").splitlines():
+        m = _CONFIDENCE_RE.search(line)
+        if not m:
+            continue
+        number = float(m.group(1))
+        if not m.group(2) and "." in m.group(1) and number < 1:
+            number *= 100
+        if 0 <= number <= 100:
+            return int(round(number))
+        return None
+    return None
