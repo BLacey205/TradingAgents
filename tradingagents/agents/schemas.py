@@ -36,6 +36,33 @@ def _coerce_optional_float(value):
     return value
 
 
+def _coerce_confidence(value):
+    """Normalise a confidence to an int percentage in [0, 100], or None.
+
+    Models write it as ``72``, ``"72%"``, ``72.4`` or a fraction like ``0.72``;
+    all map to 72. Placeholders ("N/A", "none") become None, and out-of-range
+    numbers are clamped rather than failing the whole structured decision.
+    """
+    value = _coerce_optional_float(value)
+    if value is None or isinstance(value, bool):
+        return None
+    percent = False
+    if isinstance(value, str):
+        value = value.strip()
+        percent = value.endswith("%")
+        value = value.rstrip("%").strip()
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    # A fraction written with a decimal point (0.72, "0.72") is a probability;
+    # "0.72%" or an integer 1 are already percentages.
+    is_fraction = isinstance(value, float) or (isinstance(value, str) and "." in value)
+    if is_fraction and not percent and 0 < number < 1:
+        number *= 100
+    return int(round(min(max(number, 0.0), 100.0)))
+
+
 # ---------------------------------------------------------------------------
 # Shared rating types
 # ---------------------------------------------------------------------------
@@ -200,6 +227,17 @@ class PortfolioDecision(BaseModel):
             "Underweight / Sell, picked based on the analysts' debate."
         ),
     )
+    confidence: int | None = Field(
+        default=None,
+        description=(
+            "Probability, from 0 to 100, that the rating's direction proves right "
+            "over the time horizon: for Buy/Overweight that the price rises, for "
+            "Sell/Underweight that it falls, for Hold that it stays range-bound. "
+            "50 means a coin flip; reserve 80+ for evidence that clearly points "
+            "one way. Be calibrated: across many calls, 70 should be right about "
+            "70% of the time."
+        ),
+    )
     executive_summary: str = Field(
         description=(
             "A concise action plan covering entry strategy, position sizing, "
@@ -227,6 +265,11 @@ class PortfolioDecision(BaseModel):
     def _nullish_float_to_none(cls, v):
         return _coerce_optional_float(v)
 
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _normalise_confidence(cls, v):
+        return _coerce_confidence(v)
+
 
 def render_pm_decision(decision: PortfolioDecision) -> str:
     """Render a PortfolioDecision back to the markdown shape the rest of the system expects.
@@ -234,11 +277,13 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     Memory log, CLI display, and saved report files all read this markdown,
     so the rendered output preserves the exact section headers (``**Rating**``,
     ``**Executive Summary**``, ``**Investment Thesis**``) that downstream
-    parsers and the report writers already handle.
+    parsers and the report writers already handle. ``**Confidence**`` follows
+    the rating when the model gave one (see ``parse_confidence``).
     """
-    parts = [
-        f"**Rating**: {decision.rating.value}",
-        "",
+    parts = [f"**Rating**: {decision.rating.value}", ""]
+    if decision.confidence is not None:
+        parts.extend([f"**Confidence**: {decision.confidence}%", ""])
+    parts += [
         f"**Executive Summary**: {decision.executive_summary}",
         "",
         f"**Investment Thesis**: {decision.investment_thesis}",

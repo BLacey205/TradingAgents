@@ -16,6 +16,11 @@ Breaking changes within the 0.x line are called out explicitly.
   hit rate, per-decision and compounded return versus the benchmark, max
   drawdown, and LLM usage. Runs resume from `decisions.jsonl`, and the memory
   log is off by default so live-price reflections cannot leak into later dates.
+- **Decision confidence.** The Portfolio Manager now states a 0-100 confidence
+  alongside its rating (`**Confidence**: N%` in the rendered decision,
+  `PortfolioDecision.confidence`, `parse_confidence()`). Backtests report
+  calibration: stated versus realized hit rate by confidence bucket, a Brier
+  score, and whether the agents are over- or underconfident.
 
 ### Changed
 
