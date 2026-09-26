@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
-## [Unreleased]
+## [0.4.0] — 2026-09-26
+
+Measurement release: a walk-forward backtest runner scores the agents' calls
+against what prices did next, and the Portfolio Manager now states a confidence
+that backtests check for calibration. No breaking changes; the rendered final
+decision gains a `**Confidence**` line when the model supplies one.
 
 ### Added
 
