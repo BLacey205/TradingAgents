@@ -236,7 +236,19 @@ Both keys live in `~/.config/watch/.env`. The script prefers Groq when both are 
 - **Setup preflight failed** → run `python3 "${SKILL_DIR}/scripts/setup.py"` (auto-installs ffmpeg/yt-dlp via brew on macOS, scaffolds the `.env`). For API key, ask the user via `AskUserQuestion` and write it to `~/.config/watch/.env`.
 - **No transcript available** → captions missing AND (no Whisper key and no faster-whisper, OR transcription failed). Script prints a hint pointing to setup. Proceed frames-only and tell the user.
 - **Long video warning printed** → acknowledge it in your answer. Offer to re-run focused on a specific section via `--start`/`--end` rather than a sparse full-video scan.
-- **Download fails** → yt-dlp's error goes to stderr. If it's a login-required or region-locked video, tell the user plainly; do not keep retrying.
+- **Download fails** → yt-dlp's error goes to stderr. If it's a login-required or region-locked video, tell the user plainly; do not keep retrying. If YouTube says "Sign in to confirm you're not a bot" (often with HTTP 429), the server's IP is being blocked — common from cloud machines. Tell the user it can be fixed with their cookies (see **Cookies for YouTube** below); do not retry in a loop.
+
+### Cookies for YouTube
+
+Optional. Only needed when a site blocks anonymous downloads from this machine. Set **one** of these, in the environment or `~/.config/watch/.env`; the first one set wins:
+
+| Setting | Use it for | Value |
+|---|---|---|
+| `WATCH_COOKIES_B64` | Cloud environments (single-line secret) | The user's Netscape `cookies.txt`, base64-encoded on one line: `base64 -w0 cookies.txt` (macOS: `base64 -i cookies.txt`) |
+| `WATCH_COOKIES_FILE` | A machine where the file can live | Path to the `cookies.txt` |
+| `WATCH_COOKIES_FROM_BROWSER` | The user's own computer | Browser name, e.g. `chrome`, `firefox`, `safari` |
+
+The user exports `cookies.txt` from a browser where they are signed in to YouTube, e.g. with a "Get cookies.txt LOCALLY" extension (see yt-dlp's FAQ on exporting YouTube cookies). `WATCH_COOKIES_B64` is decoded to `~/.config/watch/cookies.txt` (mode `0600`). Warn the user that cookies give access to their account: a throwaway account is safer, and cookies expire, so a new export is needed when downloads start failing again. Never print, echo or commit cookie values.
 - **Whisper request fails** → the error is printed to stderr (likely: invalid key or rate limit). Audio over the API's 25 MB upload cap is split into chunks and transcribed automatically, so length alone won't fail it; if some chunks fail the transcript is partial and the dropped chunks are noted on stderr. The report will say "none available" only if every chunk fails. You can retry with `--whisper openai` if Groq failed (or vice versa), or `--whisper local` if faster-whisper is installed. A local failure is usually a blocked model download from Hugging Face or a misspelled `WATCH_LOCAL_MODEL`.
 
 ## Token efficiency
@@ -261,10 +273,10 @@ If you already watched a video this session and the user asks a follow-up, do **
 
 **What this skill does NOT do:**
 - Does not upload the video itself to any API — only the extracted audio goes out, and only when native captions are missing AND Whisper is not disabled with `--no-whisper`
-- Does not access any platform account (no login, no session cookies, no posting) — yt-dlp only ever requests public data
+- Does not access any platform account (no login, no posting) — yt-dlp only requests public data, unless the user has set cookies (`WATCH_COOKIES_*`), in which case yt-dlp sends them to the matching site to get past sign-in or bot checks
 - Does not share API keys between providers (Groq key only goes to `api.groq.com`, OpenAI key only goes to `api.openai.com`)
 - Does not log, cache, or write API keys to stdout, stderr, or output files
-- Does not persist anything outside the working directory, `~/.config/watch/.env` and (local backend only) the Hugging Face model cache — clean up the working directory when you're done (Step 5)
+- Does not persist anything outside the working directory, `~/.config/watch/.env`, `~/.config/watch/cookies.txt` (only when `WATCH_COOKIES_B64` is set) and (local backend only) the Hugging Face model cache — clean up the working directory when you're done (Step 5)
 
 **Bundled scripts:** `scripts/watch.py` (entry point), `scripts/download.py` (yt-dlp wrapper), `scripts/frames.py` (ffmpeg frame extraction), `scripts/transcribe.py` (caption selection + Whisper orchestration), `scripts/whisper.py` (Groq / OpenAI clients + local faster-whisper), `scripts/setup.py` (preflight + installer)
 
