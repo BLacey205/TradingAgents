@@ -93,6 +93,8 @@ def main() -> int:
     transcript_segments: list[dict] = []
     transcript_text: str | None = None
     transcript_source: str | None = None
+    # Why Whisper produced nothing, when it ran — used for the report's wording.
+    whisper_failure: str | None = None
     video_path: str | None = None
 
     if url_source:
@@ -251,6 +253,7 @@ def main() -> int:
                 transcript_text = format_transcript(transcript_segments)
                 transcript_source = f"whisper ({used_backend})"
             except SystemExit as exc:
+                whisper_failure = str(exc)
                 print(f"[watch] whisper fallback failed: {exc}", file=sys.stderr)
         else:
             if args.whisper == "local":
@@ -375,12 +378,24 @@ def main() -> int:
         )
     elif focused and dl.get("subtitle_path"):
         print(f"_No transcript lines fell inside {format_time(effective_start)} → {format_time(effective_end)}._")
+    elif video_path and not meta.get("has_audio"):
+        print("_No transcript available — the video has no audio track. Proceed with frames only._")
+    elif whisper_failure and "no transcript segments" in whisper_failure:
+        print(
+            "_No transcript available — proceed with frames only. Captions were missing and "
+            "Whisper ran but found no speech in the audio (e.g. music, tones or silence)._"
+        )
+    elif whisper_failure:
+        print(
+            "_No transcript available — proceed with frames only. Captions were missing and "
+            f"the Whisper fallback failed: {whisper_failure}_"
+        )
     else:
         setup_py = SCRIPT_DIR / "setup.py"
         print(
             "_No transcript available — proceed with frames only. "
             "Captions were missing and the Whisper fallback was unavailable "
-            "(no API key set and faster-whisper not installed, or `--no-whisper` was used). "
+            "(no usable Whisper backend — no API key and no faster-whisper — or `--no-whisper` was used). "
             f"Run `python3 {setup_py}` to enable Whisper, then re-run._"
         )
 
