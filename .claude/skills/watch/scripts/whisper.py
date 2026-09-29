@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Transcribe a video via Groq or OpenAI Whisper API.
+"""Transcribe a video via Groq or OpenAI Whisper API, or locally with faster-whisper.
 
 Strategy: extract audio (mono 16kHz mp3, tiny payload), upload to whichever
 API has a key. Returns segments in the same shape as transcribe.parse_vtt so
 the rest of the pipeline (filter_range, format_transcript) doesn't care where
 the transcript came from.
 
-Pure stdlib — no `pip install groq` or `pip install openai` needed.
+API backends are pure stdlib — no `pip install groq` or `pip install openai`
+needed. The optional `local` backend runs on this machine with no key and no
+upload; it needs `pip install faster-whisper` and is used when no API key is
+set (or when forced with `--whisper local`).
 """
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
 import math
@@ -31,6 +35,11 @@ GROQ_MODEL = "whisper-large-v3"
 
 OPENAI_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
 OPENAI_MODEL = "whisper-1"
+
+# Local faster-whisper model. `small` is a reasonable CPU speed/accuracy trade;
+# override with WATCH_LOCAL_MODEL (tiny, base, small, medium, large-v3, ...).
+# The model downloads from Hugging Face on first use and is cached after that.
+LOCAL_MODEL = "small"
 
 # Both Groq's free tier and OpenAI whisper-1 cap uploads at 25 MB. We target a
 # margin under that so multipart framing overhead never pushes a chunk over.
@@ -63,10 +72,15 @@ def plan_chunks(
 
 
 def load_api_key(preferred: str | None = None) -> tuple[str, str] | tuple[None, None]:
-    """Return (backend, api_key). Prefers Groq, falls back to OpenAI.
+    """Return (backend, api_key). Prefers Groq, then OpenAI, then local.
 
     If `preferred` is "groq" or "openai", only that backend's key is considered.
+    If `preferred` is "local" — or no API key is found — the local backend is
+    returned when faster-whisper is installed, with an empty api_key.
     """
+    if preferred == "local":
+        return ("local", "") if local_available() else (None, None)
+
     def _from_env(name: str) -> str | None:
         value = os.environ.get(name)
         return value.strip() if value else None
@@ -109,7 +123,66 @@ def load_api_key(preferred: str | None = None) -> tuple[str, str] | tuple[None, 
         if value:
             return backend, value
 
+    if preferred is None and local_available():
+        return "local", ""
+
     return None, None
+
+
+def local_available() -> bool:
+    """True if the optional faster-whisper package is importable."""
+    return importlib.util.find_spec("faster_whisper") is not None
+
+
+def local_model_name() -> str:
+    """Model for the local backend: WATCH_LOCAL_MODEL env, then .env, then default."""
+    from config import read_env_file
+
+    return (
+        os.environ.get("WATCH_LOCAL_MODEL")
+        or read_env_file().get("WATCH_LOCAL_MODEL")
+        or LOCAL_MODEL
+    ).strip()
+
+
+_LOCAL_MODELS: dict[str, object] = {}
+
+
+def _transcribe_local(audio_path: Path) -> list[dict]:
+    """Transcribe one audio file on this machine with faster-whisper."""
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError as exc:
+        raise SystemExit(
+            "Local Whisper needs faster-whisper: pip install faster-whisper"
+        ) from exc
+
+    name = local_model_name()
+    model = _LOCAL_MODELS.get(name)
+    if model is None:
+        print(
+            f"[watch] loading local Whisper model '{name}' "
+            "(first use downloads it from Hugging Face)…",
+            file=sys.stderr,
+        )
+        try:
+            # "auto" picks the GPU when CUDA is available, else the CPU, and
+            # the fastest precision that device supports (int8 on most CPUs).
+            model = WhisperModel(name, device="auto", compute_type="auto")
+        except Exception as exc:  # bad model name, download blocked, etc.
+            raise SystemExit(f"Could not load local Whisper model '{name}': {exc}") from exc
+        _LOCAL_MODELS[name] = model
+
+    try:
+        segments, _info = model.transcribe(str(audio_path), vad_filter=True)
+        out = []
+        for seg in segments:
+            text = seg.text.strip()
+            if text:
+                out.append({"start": float(seg.start), "end": float(seg.end), "text": text})
+    except Exception as exc:
+        raise SystemExit(f"Local Whisper transcription failed: {exc}") from exc
+    return out
 
 
 def extract_audio(video_path: str, out_path: Path) -> Path:
@@ -406,6 +479,8 @@ def _transcribe_file(backend: str, api_key: str, audio_path: Path) -> list[dict]
         response = _post_whisper(GROQ_ENDPOINT, api_key, GROQ_MODEL, audio_path)
     elif backend == "openai":
         response = _post_whisper(OPENAI_ENDPOINT, api_key, OPENAI_MODEL, audio_path)
+    elif backend == "local":
+        return _transcribe_local(audio_path)
     else:
         raise SystemExit(f"Unknown whisper backend: {backend}")
     return _segments_from_response(response)
@@ -426,12 +501,12 @@ def transcribe_video(
         backend = backend or detected_backend
         api_key = api_key or detected_key
 
-    if not backend or not api_key:
+    if not backend or (not api_key and backend != "local"):
         setup_py = Path(__file__).resolve().parent / "setup.py"
         raise SystemExit(
             "No Whisper API key available. Set GROQ_API_KEY (preferred) or OPENAI_API_KEY "
-            "in the environment or in ~/.config/watch/.env. "
-            f"Run `python3 {setup_py}` to configure."
+            "in the environment or in ~/.config/watch/.env, or `pip install faster-whisper` "
+            f"to transcribe locally. Run `python3 {setup_py}` to configure."
         )
 
     print(f"[watch] extracting audio for Whisper ({backend})…", file=sys.stderr)
@@ -441,7 +516,15 @@ def transcribe_video(
     def transcribe_one(path: Path) -> list[dict]:
         return _transcribe_file(backend, api_key, path)
 
-    if audio_bytes <= MAX_UPLOAD_BYTES:
+    if backend == "local":
+        # Nothing is uploaded, so the API size cap doesn't apply: one pass.
+        print(
+            f"[watch] audio: {audio_bytes / 1024:.0f} kB — transcribing locally "
+            f"with faster-whisper ({local_model_name()})…",
+            file=sys.stderr,
+        )
+        segments = transcribe_one(audio_path)
+    elif audio_bytes <= MAX_UPLOAD_BYTES:
         print(
             f"[watch] audio: {audio_bytes / 1024:.0f} kB — uploading to {backend} Whisper…",
             file=sys.stderr,
@@ -467,7 +550,7 @@ def transcribe_video(
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("usage: whisper.py <video-path> [<audio-out.mp3>] [--backend groq|openai]", file=sys.stderr)
+        print("usage: whisper.py <video-path> [<audio-out.mp3>] [--backend groq|openai|local]", file=sys.stderr)
         raise SystemExit(2)
 
     video = sys.argv[1]

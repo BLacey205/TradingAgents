@@ -56,9 +56,10 @@ def main() -> int:
     )
     ap.add_argument(
         "--whisper",
-        choices=["groq", "openai"],
+        choices=["groq", "openai", "local"],
         default=None,
-        help="Force a specific Whisper backend. Default: prefer Groq, fall back to OpenAI.",
+        help="Force a specific Whisper backend. Default: prefer Groq, then OpenAI, "
+             "then local faster-whisper (if installed).",
     )
     ap.add_argument(
         "--no-dedup",
@@ -238,7 +239,7 @@ def main() -> int:
 
     if not transcript_segments and not args.no_whisper and video_path and meta.get("has_audio"):
         backend, api_key = load_api_key(args.whisper)
-        if backend and api_key:
+        if backend:
             try:
                 all_segments, used_backend = transcribe_video(
                     video_path,
@@ -252,11 +253,12 @@ def main() -> int:
             except SystemExit as exc:
                 print(f"[watch] whisper fallback failed: {exc}", file=sys.stderr)
         else:
-            hint = (
-                f"--whisper {args.whisper} was set but the matching API key is missing"
-                if args.whisper else
-                "no subtitles and no Whisper API key found"
-            )
+            if args.whisper == "local":
+                hint = "--whisper local was set but faster-whisper is not installed (pip install faster-whisper)"
+            elif args.whisper:
+                hint = f"--whisper {args.whisper} was set but the matching API key is missing"
+            else:
+                hint = "no subtitles, no Whisper API key and no local faster-whisper found"
             setup_py = SCRIPT_DIR / "setup.py"
             print(
                 f"[watch] {hint} — run `python3 {setup_py}` to enable the Whisper fallback",
@@ -378,7 +380,7 @@ def main() -> int:
         print(
             "_No transcript available — proceed with frames only. "
             "Captions were missing and the Whisper fallback was unavailable "
-            "(no API key set, or `--no-whisper` was used). "
+            "(no API key set and faster-whisper not installed, or `--no-whisper` was used). "
             f"Run `python3 {setup_py}` to enable Whisper, then re-run._"
         )
 
