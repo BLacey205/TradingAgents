@@ -157,6 +157,11 @@ real video, for example `/watch https://youtu.be/dQw4w9WgXcQ what happens at 0:3
 **If the test fails:**
 - **A.** If YouTube blocks the download (bot check, HTTP 403): update yt-dlp with
   `pip install -U yt-dlp`, since YouTube changes often.
+- **A2.** If YouTube says "Sign in to confirm you're not a bot" (HTTP 429), the server's IP is blocked. Fix it with
+  the user's YouTube cookies: export `cookies.txt` from a signed-in browser, then set `WATCH_COOKIES_B64` to the
+  output of `base64 -w0 cookies.txt` as an environment secret (cloud), or set `WATCH_COOKIES_FILE` (a path) or
+  `WATCH_COOKIES_FROM_BROWSER` (e.g. `chrome`) locally. Cookies give access to the account, so a throwaway
+  account is safer. Re-export when they expire.
 - **B.** Still blocked, which is common from cloud IP addresses: test with a local file instead.
   Create a test video with
   `ffmpeg -f lavfi -i testsrc=duration=10:size=640x360:rate=30 /tmp/test.mp4` and run `/watch /tmp/test.mp4`.
