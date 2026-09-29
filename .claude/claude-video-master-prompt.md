@@ -140,7 +140,11 @@ be `[]`.
 - **B.** To keep the key across cloud sessions, add it as an environment secret instead. See
   `read_documentation` with topic `environment.secrets`. The skill reads keys from environment
   variables too.
-- **C.** If the user doesn't want a key, run with `--no-whisper`. Videos without captions will come
+- **C.** No key needed: `pip install faster-whisper`. The skill then transcribes on the machine itself,
+  and uses this automatically when no key is set (or force it with `--whisper local`). Pick the model
+  with `WATCH_LOCAL_MODEL` (`tiny`, `base`, `small` (default), `medium`, `large-v3`). The first run
+  downloads the model from `huggingface.co`, so if that host is blocked, use an API key instead.
+- **C2.** If the user wants no transcription at all, run with `--no-whisper`. Videos without captions will come
   back as frames only.
 - **D.** If calls to `api.groq.com` or `api.openai.com` are blocked by network policy, switch to the
   other provider, or fall back to C.

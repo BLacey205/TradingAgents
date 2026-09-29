@@ -18,6 +18,7 @@ Design:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import platform
@@ -46,8 +47,12 @@ ENV_TEMPLATE = """# /watch API configuration
 # Get a Groq key:  https://console.groq.com/keys
 # Get an OpenAI key:  https://platform.openai.com/api-keys
 #
-# Leave both blank to disable Whisper — /watch will still work, but videos
-# without native captions will come back frames-only.
+# No key? Run Whisper on this machine instead: `pip install faster-whisper`.
+# It's used automatically when both keys are blank. Pick the model with
+# WATCH_LOCAL_MODEL (tiny | base | small | medium | large-v3; default small).
+#
+# With no key and no faster-whisper, /watch still works, but videos without
+# native captions come back frames-only.
 
 GROQ_API_KEY=
 OPENAI_API_KEY=
@@ -114,10 +119,14 @@ def _read_env_key(name: str) -> str | None:
 
 
 def _have_api_key() -> tuple[bool, str | None]:
+    """Whether a Whisper backend is usable. A local faster-whisper install
+    counts: it needs no key, so it satisfies the same setup gate."""
     if _read_env_key("GROQ_API_KEY"):
         return True, "groq"
     if _read_env_key("OPENAI_API_KEY"):
         return True, "openai"
+    if importlib.util.find_spec("faster_whisper") is not None:
+        return True, "local"
     return False, None
 
 
@@ -345,6 +354,7 @@ def cmd_install() -> int:
     print(f"  Edit {CONFIG_FILE} and set either:")
     print("    GROQ_API_KEY=...    (preferred — cheaper, faster; get one at console.groq.com/keys)")
     print("    OPENAI_API_KEY=...  (fallback; get one at platform.openai.com/api-keys)")
+    print("  Or transcribe locally with no key: pip install faster-whisper")
     print("")
     print("  Without a key, /watch still works but videos without captions come back frames-only.")
     return 3
