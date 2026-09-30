@@ -236,7 +236,21 @@ Both keys live in `~/.config/watch/.env`. The script prefers Groq when both are 
 - **Setup preflight failed** → run `python3 "${SKILL_DIR}/scripts/setup.py"` (auto-installs ffmpeg/yt-dlp via brew on macOS, scaffolds the `.env`). For API key, ask the user via `AskUserQuestion` and write it to `~/.config/watch/.env`.
 - **No transcript available** → captions missing AND (no Whisper key and no faster-whisper, OR transcription failed). Script prints a hint pointing to setup. Proceed frames-only and tell the user.
 - **Long video warning printed** → acknowledge it in your answer. Offer to re-run focused on a specific section via `--start`/`--end` rather than a sparse full-video scan.
-- **Download fails** → yt-dlp's error goes to stderr. If it's a login-required or region-locked video, tell the user plainly; do not keep retrying. If YouTube says "Sign in to confirm you're not a bot" (often with HTTP 429), the server's IP is being blocked — common from cloud machines. Tell the user it can be fixed with their cookies (see **Cookies for YouTube** below); do not retry in a loop.
+- **Download fails** → yt-dlp's error goes to stderr. If it's a login-required or region-locked video, tell the user plainly; do not keep retrying. If YouTube says "Sign in to confirm you're not a bot" (often with HTTP 429), the server's IP is being blocked — common from cloud machines. Do not retry in a loop: switch to the **vidIQ fallback for YouTube** below if the vidIQ tools are available; otherwise tell the user it can be fixed with their cookies (see **Cookies for YouTube** below).
+
+### vidIQ fallback for YouTube
+
+Use this only for a **YouTube** URL (`youtube.com`, `youtu.be`, `/shorts/`) when `watch.py` fails because YouTube blocked the download (bot check / HTTP 429 / "yt-dlp did not produce a video file" after YouTube errors). It runs on vidIQ's servers, so the block doesn't apply. The scripts can't call it — you do, with the vidIQ connector tools. If they aren't loaded, search for them (e.g. ToolSearch `vidiq`); if there is no vidIQ connector, skip to **Cookies for YouTube**.
+
+Pick the cheapest tool that answers the user's question:
+
+| Tool | Use when | Cost |
+|---|---|---|
+| `vidiq_video_transcript` (`videoId` = the URL or ID) | The question is about what is **said** (summary, quotes, topics). Default choice. | 5 credits |
+| `vidiq_video_watch` (`video` = URL, `prompt` = the user's question) | The question is about what is **shown** (visuals, on-screen text, scenes). Async: poll `vidiq_job_poll` with the returned `mcpJobId` until `completed`, then read `analysisText`. | 25 credits |
+| `vidiq_watch_shortform_content` | Visual questions about a **Short** | see the tool |
+
+If the question needs both, start with the transcript and only add `vidiq_video_watch` when the transcript can't answer it. When you answer, tell the user in one line that YouTube blocked the direct download so the answer comes from vidIQ (a transcript, or vidIQ's description of the visuals — not frames you looked at yourself), and how many credits it used. If a vidIQ call reports a plan or credit limit, relay that to the user and stop. If vidIQ fails too, say so and point the user to **Cookies for YouTube**. Never use the vidIQ fallback for non-YouTube sources or local files.
 
 ### Cookies for YouTube
 
@@ -268,6 +282,7 @@ If you already watched a video this session and the user asks a follow-up, do **
 - Sends the extracted audio clip to Groq's Whisper API (`api.groq.com/openai/v1/audio/transcriptions`) when `GROQ_API_KEY` is set (preferred — cheaper, faster)
 - Sends the extracted audio clip to OpenAI's audio transcription API (`api.openai.com/v1/audio/transcriptions`) when `OPENAI_API_KEY` is set and Groq is not, or when `--whisper openai` is forced
 - With the `local` backend, transcribes the audio on this machine with faster-whisper; the only network request is the one-time model download from Hugging Face (`huggingface.co`)
+- Only when YouTube blocks the direct download and the vidIQ fallback is used: Claude (not the scripts) sends the YouTube URL — and, for visual questions, the user's question — to vidIQ through its connector, which costs vidIQ credits
 - Writes the downloaded video, frames, audio, and an intermediate transcript to a working directory under the system temp dir (or `--out-dir` if specified) so Claude can `Read` them
 - Reads / creates `~/.config/watch/.env` (mode `0600`) to store the Whisper API key(s) and a `SETUP_COMPLETE` marker. As a fallback, also reads `.env` in the current working directory
 

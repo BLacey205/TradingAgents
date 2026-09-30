@@ -157,6 +157,9 @@ real video, for example `/watch https://youtu.be/dQw4w9WgXcQ what happens at 0:3
 **If the test fails:**
 - **A.** If YouTube blocks the download (bot check, HTTP 403): update yt-dlp with
   `pip install -U yt-dlp`, since YouTube changes often.
+- **A1.** Quickest fix when YouTube blocks the download: if the vidIQ connector is available, use it
+  instead (no setup): `vidiq_video_transcript` for what is said (5 credits) or `vidiq_video_watch` for what
+  is shown (25 credits). The skill's `SKILL.md` ("vidIQ fallback for YouTube") tells Claude to do this.
 - **A2.** If YouTube says "Sign in to confirm you're not a bot" (HTTP 429), the server's IP is blocked. Fix it with
   the user's YouTube cookies: export `cookies.txt` from a signed-in browser, then set `WATCH_COOKIES_B64` to the
   output of `base64 -w0 cookies.txt` as an environment secret (cloud), or set `WATCH_COOKIES_FILE` (a path) or
