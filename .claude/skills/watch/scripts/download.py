@@ -210,7 +210,8 @@ def download_url(
         hint = ""
         if "--cookies" not in cmd and "--cookies-from-browser" not in cmd:
             hint = (
-                ". If the site asked to sign in or 'confirm you're not a bot', "
+                ". If the site asked to sign in or 'confirm you're not a bot': for YouTube, "
+                "use the vidIQ tools instead (see SKILL.md, 'vidIQ fallback for YouTube'), or "
                 "set WATCH_COOKIES_B64, WATCH_COOKIES_FILE or WATCH_COOKIES_FROM_BROWSER "
                 "(see SKILL.md, 'Cookies for YouTube')"
             )
