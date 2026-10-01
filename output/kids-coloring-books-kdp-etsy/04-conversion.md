@@ -4,7 +4,7 @@ Built on 01-research.md, 02-offer.md and 03-content.md (all 2026-10-01).
 
 ## Status and ground rules
 
-- The whole email path is an EXPERIMENT and is GATED: do not build the form, the automation or the free page until the Etsy listings (personalized book, and Harvest Time if still in season) are live. Until then the in-video CTA uses its fallback ("Tap the listing to see a sample page, then send me a name") and none of this runs.
+- The whole email path is an EXPERIMENT and is GATED: do not build the form, the automation or the free page until the Etsy listings (personalized book, and Harvest Time if still in season) are live. Until then the in-video CTA uses its fallback ("Tap the listing to see a sample page, then order on Etsy and add the name at checkout") and none of this runs.
 - No evidence yet that parents will trade an email for one free page. No sign-up rate, open rate or conversion figure is assumed anywhere below. Set pass/fail thresholds yourself before launch (suggested pattern: judge after 30 days of pin traffic, matching the offer's Test 2 window). Nothing here is sourced.
 - Prices ($7.99 launch, $9.99 later, $24.99 party tier), the 48-hour turnaround and the 15-minute-per-order figure are unverified estimates. Emails never quote a price ("the price is on the listing") and never mention the 15-minute figure or the party tier. The 48-hour line appears only as the shop's stated commitment and must match the live listing text; confirm it is a promise you can keep (time the first 3 orders) before it goes into any email.
 - Buyer language below is seller-side (competitor listings and tags), not buyer speech. No reviews, sales counts, parent quotes, "best seller" or income claims exist and none are used.
@@ -59,7 +59,7 @@ Suggested timing (adjust freely): Day 0, Day 2, Day 4, Day 7, Day 10. Plain text
 ## Handoff into the paid rungs
 
 - Every purchase happens on Etsy. Emails link only to Etsy listings. Never take orders, names or payment by email or by a link to another platform.
-- The in-video CTA says "send me a name when you're ready". Route that to the Etsy personalization box and Etsy messages, not email. Content agent: reword the CTA if needed.
+- The in-video CTA now says "order on Etsy and add the name at checkout", which routes names to the Etsy personalization box and Etsy messages, not email.
 - Rung order in the funnel: free cow page (email 1) → personalized book (emails 3 and 5). The Harvest Time entry pack is a separate seasonal side link in email 4 only, not a required step.
 - Do not add Etsy buyers' emails or names to the list. List members come only from the sign-up form. Do not use Etsy order or message data for marketing (see compliance).
 - After email 5, no further promotional emails unless you decide on a separate, disclosed cadence. Reader replies about multiple names are logged but do not count toward the party-set unlock (see below).
@@ -82,7 +82,7 @@ Suggested timing (adjust freely): Day 0, Day 2, Day 4, Day 7, Day 10. Plain text
 ## Compliance checks (verify before launch; none confirmed here)
 
 Etsy (read the current Seller Policy, Creativity Standards and the rules on communication and off-Etsy marketing; I could not confirm wording):
-1. Are links to external sites allowed in listing descriptions, listing videos and shop pages? Assume no and keep the sign-up link on Pinterest only. The video end-card says "Search the shop for a free farm page"; confirm that wording is acceptable and accurate, because the free page lives off Etsy. If the page is off Etsy, the phrase "from my shop" in the in-video CTA may mislead; reword it (for example "from my Pinterest page").
+1. Are links to external sites allowed in listing descriptions, listing videos and shop pages? Assume no and keep the sign-up link on Pinterest only. The video end-card and CTA now say the free page is on Pinterest (not "from my shop"), since it lives off Etsy; still confirm Etsy allows mentioning an off-Etsy page in listing video at all, and drop the free-page line from the Etsy cut if not.
 2. Etsy's rules on using buyer information (names, emails, messages) for marketing. Assume you may not add buyers to the list without separate consent. This plan does not.
 3. Whether a free-download lead magnet can be delivered off-Etsy to Etsy-originated traffic, and whether Etsy permits steering buyers off the platform for anything beyond that. The paid rungs stay entirely on Etsy.
 4. Reviews: Etsy forbids incentivized or gated review requests. The sequence offers no discount, gift or free file for a review.

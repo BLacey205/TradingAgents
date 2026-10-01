@@ -62,7 +62,7 @@ Target runtime 22-25 seconds, vertical 9:16, captions burned in (assume muted). 
 | 0:11-0:16 | Banner beat: scroll through 4-5 drawing pages (cow, pig, tractor, barn) each with the "[Name]'s Farm" banner already carrying the name. Hold on each page about 1 second so the name is readable. |
 | 0:16-0:19 | Spelling check beat: a cropped Etsy message thread (mock sample with a fake name, labeled "sample") showing "Is it Mason or Maison?" This demonstrates the confirmation step that defuses the "will the name be right" objection. |
 | 0:19-0:22 | Print beat: the PDF coming off a home printer, then a real colored page with a child's hand or a coloring tool in frame (only if real; see proof list). No face shots needed. |
-| 0:22-0:25 | End card: "Name goes in. You print it. A gift for one kid." plus "Search the shop for a free farm page to try" (once the free cow page exists; omit the line until then). Final frame: cover mock-up with sample name. |
+| 0:22-0:25 | End card: "Name goes in. You print it. A gift for one kid." plus "Free farm page on my Pinterest" (once the free cow page exists; omit the line until then). Final frame: cover mock-up with sample name. |
 
 Still-image carousel version (Etsy listing photos 1-5 and static pins), same beats:
 1. Cover with sample name, thumbnail text.
@@ -103,11 +103,12 @@ Not provable yet, so not shown: delivery time record, review screenshots, order 
 ## In-video CTA (verbatim)
 
 Voiceover/caption (final 3 seconds):
-"Want to see the art first? Grab the free farm cow page from my shop, then send me a name when you're ready." 
+"Want to see the art first? Grab the free farm cow page from my Pinterest, then order on Etsy and add the name at checkout."
 
 Notes for use:
-- The free cow page is the lead magnet from the offer ladder (rung 2, email via MailerLite) and is deferred until listings are live. Until it exists, the CTA fallback is: "Tap the listing to see a sample page, then send me a name." Do not use the free-page line before the free page exists.
+- The free cow page is the lead magnet from the offer ladder (rung 2, email via MailerLite) and is deferred until listings are live. Until it exists, the CTA fallback is: "Tap the listing to see a sample page, then order on Etsy and add the name at checkout." Do not use the free-page line before the free page exists.
 - The lead magnet is generic (no name), so the CTA does not promise a free personalized page.
+- The free page is linked only from Pinterest; the name is entered only in the Etsy personalization box, so no purchase or name goes through email.
 - Pinterest pin link: to the Etsy listing for the personalized book; link the free page from the pin description or profile once it exists.
 
 ## Open risks for this content

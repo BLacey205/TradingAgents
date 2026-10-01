@@ -4,7 +4,7 @@
 
 The buyer is a parent, grandparent or aunt/uncle shopping for a small gift or screen-free activity for a specific 3-6 year old who likes barns and tractors. The mechanism is a "Name-Swap Farm Master File": one Canva file where the child's name is typed once and lands on the cover, the "belongs to" page, a banner on each of 10 farm drawings and a certificate, then exported as a PDF after the spelling is confirmed by message. The core offer is "[Name]'s Farm Coloring Book" on Etsy, priced at $7.99 at launch and $9.99 later, with the existing Harvest Time pack as a cheap seasonal entry rung and a Farm Party Set locked until 10 stranger sales and a buyer asks for multiple names. The hook is "Free farm pages. Nobody's name on them.", delivered as a 22-25 second vertical video of a real name swap, cut for the Etsy listing, a Pinterest video pin and a 5-slide carousel. The funnel is Pinterest to a free generic cow "print test" page by email (MailerLite, gated until listings are live), then a 5-email sequence that ends in the Etsy listing, with all purchases staying on Etsy. Demand is not proven: the research verdict is weak-to-moderate, all evidence is seller-side, and the broad generic-farm pitch was dropped because competitors already sell it. The cheapest check that could overturn the whole system is a 10-minute logged-out Etsy search for "personalized farm coloring book" and "personalized coloring book with name", to be done before more art is made.
 
-Unverified or invented figures to confirm before relying on them: all prices, the 48-hour turnaround, the 15-minute-per-order estimate, Etsy fee rates, MailerLite free-plan limits, and the Etsy/CAN-SPAM compliance items listed in section 4. Known conflict between stages: the in-video CTA in section 3 says "from my shop" but the free page lives off Etsy; reword it to point at Pinterest (see section 4).
+Unverified or invented figures to confirm before relying on them: all prices, the 48-hour turnaround, the 15-minute-per-order estimate, Etsy fee rates, MailerLite free-plan limits, and the Etsy/CAN-SPAM compliance items listed in section 4. The earlier CTA conflict ("from my shop" for a free page that lives off Etsy) is fixed: the CTA now points to Pinterest for the free page and Etsy for ordering. Still confirm Etsy allows mentioning an off-Etsy page in listing video (section 4).
 
 ---
 
@@ -230,7 +230,7 @@ Target runtime 22-25 seconds, vertical 9:16, captions burned in (assume muted). 
 | 0:11-0:16 | Banner beat: scroll through 4-5 drawing pages (cow, pig, tractor, barn) each with the "[Name]'s Farm" banner already carrying the name. Hold on each page about 1 second so the name is readable. |
 | 0:16-0:19 | Spelling check beat: a cropped Etsy message thread (mock sample with a fake name, labeled "sample") showing "Is it Mason or Maison?" This demonstrates the confirmation step that defuses the "will the name be right" objection. |
 | 0:19-0:22 | Print beat: the PDF coming off a home printer, then a real colored page with a child's hand or a coloring tool in frame (only if real; see proof list). No face shots needed. |
-| 0:22-0:25 | End card: "Name goes in. You print it. A gift for one kid." plus "Search the shop for a free farm page to try" (once the free cow page exists; omit the line until then). Final frame: cover mock-up with sample name. |
+| 0:22-0:25 | End card: "Name goes in. You print it. A gift for one kid." plus "Free farm page on my Pinterest" (once the free cow page exists; omit the line until then). Final frame: cover mock-up with sample name. |
 
 Still-image carousel version (Etsy listing photos 1-5 and static pins), same beats:
 1. Cover with sample name, thumbnail text.
@@ -271,11 +271,12 @@ Not provable yet, so not shown: delivery time record, review screenshots, order 
 ## In-video CTA (verbatim)
 
 Voiceover/caption (final 3 seconds):
-"Want to see the art first? Grab the free farm cow page from my shop, then send me a name when you're ready." 
+"Want to see the art first? Grab the free farm cow page from my Pinterest, then order on Etsy and add the name at checkout."
 
 Notes for use:
-- The free cow page is the lead magnet from the offer ladder (rung 2, email via MailerLite) and is deferred until listings are live. Until it exists, the CTA fallback is: "Tap the listing to see a sample page, then send me a name." Do not use the free-page line before the free page exists.
+- The free cow page is the lead magnet from the offer ladder (rung 2, email via MailerLite) and is deferred until listings are live. Until it exists, the CTA fallback is: "Tap the listing to see a sample page, then order on Etsy and add the name at checkout." Do not use the free-page line before the free page exists.
 - The lead magnet is generic (no name), so the CTA does not promise a free personalized page.
+- The free page is linked only from Pinterest; the name is entered only in the Etsy personalization box, so no purchase or name goes through email.
 - Pinterest pin link: to the Etsy listing for the personalized book; link the free page from the pin description or profile once it exists.
 
 ## Open risks for this content
@@ -295,7 +296,7 @@ Built on 01-research.md, 02-offer.md and 03-content.md (all 2026-10-01).
 
 ## Status and ground rules
 
-- The whole email path is an EXPERIMENT and is GATED: do not build the form, the automation or the free page until the Etsy listings (personalized book, and Harvest Time if still in season) are live. Until then the in-video CTA uses its fallback ("Tap the listing to see a sample page, then send me a name") and none of this runs.
+- The whole email path is an EXPERIMENT and is GATED: do not build the form, the automation or the free page until the Etsy listings (personalized book, and Harvest Time if still in season) are live. Until then the in-video CTA uses its fallback ("Tap the listing to see a sample page, then order on Etsy and add the name at checkout") and none of this runs.
 - No evidence yet that parents will trade an email for one free page. No sign-up rate, open rate or conversion figure is assumed anywhere below. Set pass/fail thresholds yourself before launch (suggested pattern: judge after 30 days of pin traffic, matching the offer's Test 2 window). Nothing here is sourced.
 - Prices ($7.99 launch, $9.99 later, $24.99 party tier), the 48-hour turnaround and the 15-minute-per-order figure are unverified estimates. Emails never quote a price ("the price is on the listing") and never mention the 15-minute figure or the party tier. The 48-hour line appears only as the shop's stated commitment and must match the live listing text; confirm it is a promise you can keep (time the first 3 orders) before it goes into any email.
 - Buyer language below is seller-side (competitor listings and tags), not buyer speech. No reviews, sales counts, parent quotes, "best seller" or income claims exist and none are used.
@@ -350,7 +351,7 @@ Suggested timing (adjust freely): Day 0, Day 2, Day 4, Day 7, Day 10. Plain text
 ## Handoff into the paid rungs
 
 - Every purchase happens on Etsy. Emails link only to Etsy listings. Never take orders, names or payment by email or by a link to another platform.
-- The in-video CTA says "send me a name when you're ready". Route that to the Etsy personalization box and Etsy messages, not email. Content agent: reword the CTA if needed.
+- The in-video CTA now says "order on Etsy and add the name at checkout", which routes names to the Etsy personalization box and Etsy messages, not email.
 - Rung order in the funnel: free cow page (email 1) → personalized book (emails 3 and 5). The Harvest Time entry pack is a separate seasonal side link in email 4 only, not a required step.
 - Do not add Etsy buyers' emails or names to the list. List members come only from the sign-up form. Do not use Etsy order or message data for marketing (see compliance).
 - After email 5, no further promotional emails unless you decide on a separate, disclosed cadence. Reader replies about multiple names are logged but do not count toward the party-set unlock (see below).
@@ -373,7 +374,7 @@ Suggested timing (adjust freely): Day 0, Day 2, Day 4, Day 7, Day 10. Plain text
 ## Compliance checks (verify before launch; none confirmed here)
 
 Etsy (read the current Seller Policy, Creativity Standards and the rules on communication and off-Etsy marketing; I could not confirm wording):
-1. Are links to external sites allowed in listing descriptions, listing videos and shop pages? Assume no and keep the sign-up link on Pinterest only. The video end-card says "Search the shop for a free farm page"; confirm that wording is acceptable and accurate, because the free page lives off Etsy. If the page is off Etsy, the phrase "from my shop" in the in-video CTA may mislead; reword it (for example "from my Pinterest page").
+1. Are links to external sites allowed in listing descriptions, listing videos and shop pages? Assume no and keep the sign-up link on Pinterest only. The video end-card and CTA now say the free page is on Pinterest (not "from my shop"), since it lives off Etsy; still confirm Etsy allows mentioning an off-Etsy page in listing video at all, and drop the free-page line from the Etsy cut if not.
 2. Etsy's rules on using buyer information (names, emails, messages) for marketing. Assume you may not add buyers to the list without separate consent. This plan does not.
 3. Whether a free-download lead magnet can be delivered off-Etsy to Etsy-originated traffic, and whether Etsy permits steering buyers off the platform for anything beyond that. The paid rungs stay entirely on Etsy.
 4. Reviews: Etsy forbids incentivized or gated review requests. The sequence offers no discount, gift or free file for a review.
