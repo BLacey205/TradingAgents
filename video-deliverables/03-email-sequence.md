@@ -46,15 +46,15 @@ Once that's confirmed, you're ready for the real test — which is what tomorrow
 
 Before you run your own idea through it, here's what a real run produced — not a mockup, an actual output file from the agent chain.
 
-[Sample idea: "a done-for-you LinkedIn content system for B2B consultants"]
+Sample idea: "a done-for-you LinkedIn content system for B2B consultants"
 
-**What the research agent found:** [one real, specific line — the sharpened buyer segment and the strongest piece of evidence for/against demand]
+**What the research agent found:** the buyer isn't "B2B consultants" broadly — it's independent consultants who've already tried posting consistently and stopped. And the sharpest finding wasn't demand, it was the gap in the existing solution: consultants who hire a ghostwriter end up saying some version of "it doesn't sound like me anymore."
 
-**What the offer agent built on top of that:** [the positioning statement + the named mechanism, one line each]
+**What the offer agent built on that:** a mechanism it named the Weekly Capture Loop — a 10-minute voice note each week becomes that week's posts, so every post traces back to something the consultant actually said, instead of a ghostwriter working from a one-time interview months ago.
 
-**What the content agent turned that into:** [the hook, verbatim, one line]
+**What the content agent turned that into:** the hook — *"If you've ever read a LinkedIn post that went out under your name and thought 'that doesn't sound like me' — you don't have a writing problem. You have a capture problem."*
 
-**What the conversion agent built on top of that:** [the lead magnet name + what problem it solves]
+**What the conversion agent built on that:** the lead magnet — the Voice-Capture Starter Kit — which solves one specific problem: how do I try this mechanism by hand before I pay anyone to do it for me.
 
 [See the full sample output →]
 
