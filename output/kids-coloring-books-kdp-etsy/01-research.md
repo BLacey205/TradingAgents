@@ -1,68 +1,85 @@
-# Demand Research — AI line-art kids' coloring books (Amazon KDP print + Etsy printable packs)
+# Demand Research (second pass) — Personalized farm coloring book for young kids (Etsy printable, name on cover/pages)
 
-Research date: 2026-10-01. Method limits: WebSearch/WebFetch only. I could not log into Amazon, read BSRs, filter 3-star reviews, or see Etsy search data. The doc's own Step 0 (Amazon autosuggest, BSR, 3-star reviews) is therefore NOT done and is the most important gap. Nothing below is a verbatim parent quote unless marked as such.
+Research date: 2026-10-01. Method limits: WebSearch/WebFetch only. Etsy shop and listing pages returned 403, so every Etsy number below comes from search-result snippets or third-party trackers (findniche) and is secondhand. I could not see Amazon BSRs, Etsy search volume, Pinterest data, or buyer-written reviews. Nothing here is a verbatim parent quote unless marked as such. See 01-research-broad.md for the first pass.
+
+## Angle comparison
+
+| Angle | Verified evidence | Price market tolerates | Newcomer can appear? | Fit with constraints | Verdict |
+|---|---|---|---|---|---|
+| A. Personalized (name on cover/pages) | Several Etsy/Payhip/Gumroad sellers sell it. Snippets: two Etsy shops with 1,474 and 1,629 reviews offering made-to-order personalized coloring pages (24-48h); a shop reported at 9,267 sales (unverified, page 403). Adjacent: a personalized nursery-rhymes book at $14.99 shows 2,441 sales, 461 reviews, 88 sales in 30 days (findniche, listed Feb 2026). | $7.99-$12.99 for personalized printable books (Payhip $7.99-$9.99, $9.99, $12.99 listings) vs about $1.50-$3 for generic. Best price tolerance of the four. | Plausible but not proven. Zero-review shop selling a made-to-order gift is a trust problem. Established shops hold the review counts. | Etsy only (KDP print cannot personalize per order). Needs manual per-order PDF edit in Canva (name on cover and "belongs to" page), 1-2 day turnaround. Under $100 is fine. First sale is not fast. | PICK (best available, flagged weak-to-moderate) |
+| B. Learning hook (farm + tracing/counting) | Plenty of supply: Etsy "Count and Color Farm Animals" 10 worksheets at $1.80; 36-page farm preschool pack $3.99; 80-page no-prep farm printable; Twinkl farm tracing and busy book; many free sets. | $1.80-$3.99, for more pages than a 10-page pack | Hard. Established educational brands and free sites own this search, and bigger packs undercut 10 pages. | AI line art is a poor fit (tracing needs real letterforms, worksheet design); extra production work | Reject. Crowded, cheapest price band, no wedge found |
+| C. Occasion/theme (fall, pumpkin patch, farm unit, road trip) | Many Etsy fall listings at $0.99-$9.95; typical $1.20-$6; a 20-page fall set at $2.99; road trip packs $1.67-$7.99; a "100,000+ pages" bundle at $1.08 with 227 sales and 50 reviews. Many free pumpkin patch and autumn pages. | $1.50-$3 typical for a 10-page pack; price floor collapsed by bundles | Easiest to appear for long-tail keywords, but low margin and heavy competition; AI-skepticism risk | Best fit with existing Harvest Time pack, and fastest to list. Fall window is now (today is Oct 1) and closing | Reject as the lead, keep as the vehicle (list the harvest pack now) |
+| D. Sub-niche (tractor/farm vehicles, ages 3-5) | Existing supply: John Deere coloring and dot-marker books, Walmart tractor books at $6.49-$6.99, a 19-page printable tractor book on Gumroad, DK tractor sticker book (cited 4.9 stars, 21,000+ reviews). No BSR or search-volume evidence found. | $6.49-$6.99 print; printable lower | Doubtful against licensed Deere and DK brands on Amazon; unverified on Etsy | KDP print is possible, but the doc's KDP royalty math was already weak in the first pass | Reject. No demand evidence, big-brand competition |
+
+Reason for the pick: A is the only angle where the market is observed charging several times the generic price, and where the product differs in kind (a made-to-order gift) rather than in degree. B, C and D are all in the $1.50-$4 band against free alternatives. A is still weakly supported: all evidence is seller-side, none of it is specific to farm themes, and a new shop has no reviews. Treat it as the best available bet, not a validated one.
 
 ## Verdict
 
-Demand for kids' coloring pages exists, but I found no evidence that this specific offer is payable by a newcomer. Weak-to-contradictory. Evidence for: coloring pages are a long-standing evergreen kids' category, parents do shop for bold-outline, single-sided farm books (one search snippet shows a parent review praising thick pages that stop marker bleed), and AI coloring books are allowed on KDP with a disclosure checkbox. Evidence against: (1) farm animals for ages 4-5 with thick lines, single-sided, no bleed-through is what competitors already advertise, and free printable farm pages are abundant, so the buyer's alternative is $0; (2) Etsy "printable coloring pages" is reported as saturated (75,114 listings for one keyword, difficulty 84/100 per RankHero, whose search-volume figures are tiny and unreliable); (3) 2026 reporting says Etsy buyers are skeptical of AI-looking art and prices have collapsed; (4) KDP kids' book unit economics look poor (see Risks). The seasonal Harvest Time pack is a reasonable cheap experiment (about $0.20 listing fee), but treat it as a test, not as evidence demand exists. Expect no stranger sale in week 1.
+Still not proven. Best-supported angle is A (name-personalized farm coloring book, Etsy printable), because personalized kids' printable books sell at $7.99-$12.99 and some shops show four-figure review counts, against $1.50-$3 for generic packs. Against: (1) I found no personalized farm-themed listing or any farm-specific personalization demand; (2) existing sellers' review counts are the barrier a new shop cannot copy; (3) personalization needs manual work per order, which slows scaling and does not work on KDP; (4) I found no buyer-written text explaining why parents buy personalization, so "the name is the purchase driver" is inference from how sellers market it. Expect the first stranger sale to take weeks, not days, in line with the workflow doc's own 60-90 day note.
 
 ## Specific buyer
 
-Not validated. Best hypothesis from the evidence, in order of plausibility:
-- A parent or grandparent of a 4-5 year old, buying a printable on a specific occasion (rainy day, road trip, quiet time, preschool/homeschool farm-theme unit, fall/harvest theme). Occasion and theme searches are where a small newcomer can appear, not "farm animal coloring pages."
-- Homeschool parents and preschool teachers running a "farm theme" unit (plausible, but I found no evidence they pay rather than use free pages; teachers are the most likely to reuse free sites).
-- Gift-givers for the KDP print book, a lower-volume, lower-margin buyer.
-
-No sub-segment was shown to be "in pain and ready to pay soon." The doc itself notes no conversations with any buyer have happened yet.
+Hypothesis (not validated): a parent, grandparent or aunt/uncle buying a low-cost gift or special activity for a specific 3-6 year old, who wants the child's name on it ("belongs to [name]"), delivered instantly or within 1-2 days, for a birthday, a farm-themed party, or a stocking/Easter basket. The farm-animal fan is probably a toddler or preschooler already into barns and tractors. Teachers and homeschool parents are less likely buyers here because they reuse free sets. Evidence for the gift-giver framing: seller listings for personalized books stress "gift" and giftable tags (baby gifts, first birthday keepsakes on the $14.99 nursery-rhymes listing). That is inferred from seller tags, not buyer speech.
 
 ## Where they already show this pain
 
-What I could actually find:
-- Product pages for competing farm coloring books (Gumroad, Payhip, Walmart, Bookshop listings) market the same features the doc plans: "bold outlines & simple shapes," "thick, single-sided pages," a blank page behind each picture "to prevent bleed-through from markers, crayons, or color pencils." These show sellers believe bleed-through and line thickness are the pain points, but they are seller copy, not buyer voice.
-- One parent review surfaced in a search snippet (source page not verified, treat as lightly sourced): "My 4-year-old is obsessed! The pages are thick enough that her markers don't ruin the next picture. Best farm coloring book ever!"
-- Not found: Reddit/Facebook parent threads asking for farm coloring pages, Amazon 3-star reviews, Pinterest search data. The doc's example complaints ("lines too thin for my 4 year old," "pictures printed on both sides") are the doc author's illustrations, not collected quotes.
-- Reporting on KDP (Naomi Jane Substack, 2026): winners are "tightly aligned to age range and clearly labelled for buyers," and "poor-quality or rushed AI colouring books, however, are increasingly called out in reviews." That article is about adult coloring and low-content books generally, with no kids' data.
-- Etsy seller forums/news (via search summaries): reports of AI-listing floods, a UK illustrator with a reported 98% sales decline, and "buyer skepticism at an all-time high." I did not verify these primary sources.
+Actual finds (seller-side or tracker data, not buyer voice):
+- Etsy shops offering personalized coloring pages, from search snippets: MissyPrintableDesign (custom digital coloring pages, 24-48 hour turnaround, 4.9 stars, 1,474 reviews); AlpharickEdition (4.9 stars, 1,629 reviews, made-to-order, emailed when ready); TreasuredColor (add the child's name in the personalization box, ready in 3-5 business days). Review counts are as shown in the snippets; shop pages themselves returned 403.
+- KrayonQueen: search summary says "9,267 total sales since 2022." Not verified.
+- Payhip "Princess Personalized Coloring & Activity Pages" ($7.99-$9.99): buyer emails the child's name and cover choice; seller replies with a customized PDF in "1-2 business days." No reviews shown on the page. This is a one-person, email-based model that a newcomer can copy.
+- Payhip "The Princess Adventure" ($9.99, 15+ pages, child's name woven through); a "Personalized Calm Colouring Book" ($12.99, ages 2-6, name on cover and every page).
+- findniche on StarfallGiftCo's personalized nursery-rhymes book: $14.99, 2,441 total sales, $36,590 total revenue, 88 sales in 30 days, 461 reviews, 6,243 favorites, listed Feb 2026. This is a personalized storybook, not a coloring book, so it proves personalized-book demand, not coloring demand.
+- Name coloring page generators (univers.studio, bookcoverslab roundup) exist, so the name-art part is cheap to produce, and also cheap for competitors.
+- Not found: Reddit or Facebook threads from parents asking for personalized coloring books; Amazon 3-star reviews; any buyer review text. The one parent-sounding line from pass one ("My 4-year-old is obsessed! The pages are thick enough that her markers don't ruin the next picture.") remains unverified.
 
 ## What they're already trying (and where it falls short)
 
-- Free printable farm pages on many sites (26, 20, 15-page free sets appear in results; 90+ page free farm worksheet sets exist). Gap: none really on price. Possible gaps are age-fit consistency, theme coherence, and convenience, which a $3-5 pack must justify against free.
-- Existing paid farm coloring books (Amazon, Walmart, Gumroad, Payhip, Etsy). They already claim thick lines, single-sided pages, ages 2-8. Gap for the doc's "thick, big, simple" angle: none visible; it is table stakes. The doc itself says thick-lined farm animals "is what every competitor already sells."
-- Gaps that might be real but are unconfirmed: the doc's own fallbacks (tractor-only book, farm plus letter tracing, personalized name on cover), and a fall/harvest theme tie-in. I found no evidence any of these has search demand. Personalization and learning hooks are the more differentiated of these.
-- Bundling pushes pricing down: findniche shows a "100,000+ coloring pages bundle" on Etsy, the type of listing a 10-page pack competes with in price perception.
+- Free printable farm and fall pages (many sets of 15-90+ pages). Gap: no personalization, no gift value; but free price makes generic paid packs hard.
+- Generic paid farm and fall packs on Etsy at $1.20-$6 and bundles at about $1 for thousands of pages. Gap: nothing personal, no gift feel. Price pressure is severe.
+- Existing personalized coloring books (princess, unicorn, calm themes) at $7.99-$14.99. Gap I can see: the themes found are princess/unicorn/calm, and I did not find a farm, tractor or animal-theme personalized coloring book in the results. That is a possible gap, but absence in search snippets is weak evidence; Etsy's own search may show farm ones.
+- Name coloring page generators. Gap: output is bubble-letter name pages, which the sources themselves say need scenes or theme pages around them to be a book.
+- Licensed brand books (John Deere, DK). Gap: not personal, not printable instantly; relevant only if the tractor angle is chosen.
 
 ## Their own language
 
-Phrases below come from seller listings, the doc, and search keyword lists. They are real market phrasing but NOT verified buyer speech. Replace them with real quotes once Step 0 / Day 6 conversations happen.
-- Problem phrases (seller-side framing): "markers bleed through," "thick, single-sided pages," "pages thick enough that her markers don't ruin the next picture" (the one parent-sounding quote, unverified page)
-- Desired outcome: "screen-free," "quiet time," "rainy day activity," "road trip activity," "my 4-year-old is obsessed"
-- Search phrases to test (from doc, unverified): "farm animal coloring book for toddlers," "coloring for 4 year olds," "farm theme preschool," "fall coloring pages for preschoolers"
-- Tag guidance from Etsy research: specific themes beat generic ("cat coloring pages for adults" cited as a better pattern than "coloring pages")
+Seller and listing phrasing only; not verified buyer speech. Replace with real quotes after Day 6 conversations.
+- Personalization phrases from listings: "with your child's name," "name on the cover and throughout every page," "child's name woven into the storyline," "personalized coloring book," "custom," "made to order," "ready within 24-48 hours," "1-2 business days," "This book belongs to [name]"
+- Gift framing from tags: "baby gifts," "personalized name books," "first birthday keepsakes," "stocking stuffer," "birthday"
+- Problem/outcome phrasing carried over from pass one: "screen-free," "quiet time," "rainy day," "road trip activity," "markers don't ruin the next picture"
+- Search phrases to check (unverified): "personalized coloring book," "custom coloring book for kids," "farm coloring book with name," "coloring book with child's name"
 
 ## Cost of inaction
 
-Weak, and the buyer-side cost is close to zero. A parent not buying this loses nothing, since free pages exist. The seller-side cost is the real issue: the doc's money plan is $50-$300/month per book at best, "most books earning close to nothing." Nothing I found supports a larger buyer-side cost (time saved, missed revenue). The only credible urgency is seasonal: fall/holiday printables have a window (the doc lists Pack 3 first for that reason). Seasonality is a mild purchase trigger, not a pain.
+Weak, as in pass one. The buyer who skips this loses nothing material: free pages exist. The only real cost is the occasion: a gift needs to exist by a date (birthday, a farm-themed party, a holiday), and instant or 1-2 day delivery solves a last-minute gift, which is a plausible but unproven trigger. Seller-side cost: a generic fall pack at about $2 earns about $1.50 per sale before fees and ad costs, so a month of nothing costs the seller little and a week of waiting costs the buyer nothing. The seasonal cost to the seller is real: pumpkin/fall listing windows close by late November, so listing the harvest pack this week matters more than perfecting personalization.
 
 ## Risks / weak signals
 
-1. KDP unit economics may break the doc's ad plan. One 2026 guide (InkfluenceAI) computes a $7.99 kids' book at about $1.16 royalty after the flat $2.84 print cost (it applies a 50% rate below $9.99; I could not confirm the current rate or that it applies to a 66-page single-sided interior, so check KDP's royalty calculator). The doc's ad rule assumes about $3 per sale and a 1-in-10 click-to-sale rate, which at about $1.16 gives a break-even bid near $0.12 a click, which is unlikely to win Amazon auctions. Price near $9.99 is probably required; check whether page-1 competitors tolerate it.
-2. Blank backs mean the 30-drawing book is 66 pages, which raises the print cost versus double-sided competitors and pushes the price up.
-3. Etsy saturation and AI-skepticism. The doc's test criterion (under 50 views in 30 days = kill) is plausible for a brand-new shop with no history. A failure there would reflect shop age and competition as much as demand, so it may give a false negative. A pass is also not strong proof.
-4. Data quality: RankHero reports 20 monthly searches for one keyword and says volume fell 50% from June 2025 to May 2026 (and separately "100% increase" Sept 2025 to Aug 2026), which is internally inconsistent. Do not rely on it as demand sizing.
-5. Evidence gaps: no BSR data, no 3-star review text, no Etsy Marketplace Insights, no Pinterest search data, no buyer interviews. Step 0 must be completed manually in a logged-out browser before more art is made. The "$4,843/month" case study is already flagged in the doc as an estimate, not income.
-6. Age tiers 6-7 and 8-9 (Underwater, Space) get no support from this research. Older kids have more free and more detailed coloring options, and the doc's own demand check has not been run for them. Do not assume Farm results transfer.
-7. Platform risks: KDP requires the AI disclosure and rejects gray shading, near-duplicate pages, and spec errors. Etsy requires AI disclosure. The doc already handles these, but AI-disclosed listings may convert worse.
-8. Teachers as a buyer: unsupported here. Etsy teacher buyers more likely use TPT or free sites.
+1. All A evidence is seller-side or tracker-side. I did not read a single buyer saying they bought because of the name. Treat "personalization drives purchase" as a hypothesis.
+2. Review-count moat: the shops with 1,400-1,600 reviews are the ones buyers see first. A new shop has none; gift buyers look for reviews and personalization delivery reliability.
+3. Operations: each order needs a manual edit and delivery within 24-48 hours. That works at 1 sale a week and breaks at 10 a day. Wrong spelling or a missed turnaround window hurts a new shop's early reviews.
+4. KDP does not fit: print-on-demand cannot personalize per order. The 30-page KDP book stays generic and keeps the weak economics from pass one (roughly $1.16 royalty on a $7.99 book per one 2026 guide; unconfirmed against KDP's calculator).
+5. Farm-specific personalized demand is unverified. The personalized examples found are princess/unicorn/calm themes; a farm version may have lower or higher demand. I could not run Etsy or Pinterest search suggestions.
+6. Etsy AI skepticism and price collapse from pass one still apply. AI-disclosed line art may convert worse for a gift product, where handmade feel matters.
+7. Seasonal reality: fall tie-ins are most valuable now (Oct 1); by late November they lose pull. Personalization is a year-round gift hook, which is a point in its favor, but there is no evidence of farm-specific year-round demand.
+8. Kill tests: carry over the workflow doc's Test 2 (under 50 views in 30 days = kill) but note a new shop may fail from age alone. If a personalized listing shows views but no sales after 30 days, check price against $7.99-$9.99 competitors first.
 
-Recommended handoff stance: proceed only as a cheap test of Harvest Time Pack 3 on Etsy, with demand treated as unproven. Priorities before any scaling: complete Step 0 on Amazon, run Day 6 conversations with real parents, and test the narrower angles (personalized name, learning hook, fall-theme occasion keywords) rather than generic farm animals.
+Recommended handoff stance for the next agent: build the offer around A (name-personalized farm book, printable, 1-2 day turnaround, priced in the $7.99-$9.99 band seen on competitors, not the $1.50-$3 band of generic packs), and list the existing Harvest Time pack as a cheap seasonal test alongside it. Do not rely on KDP for A. Do not invest in B or D. Cheapest next validation before more art: in a logged-out browser, search Etsy for "personalized farm coloring book" and "personalized coloring book with name," and record listing counts, prices, review counts and the top 3 sellers' review text; that single check can overturn this pick.
 
 Sources:
-- https://www.rankhero.com/keywords/print-at-home-coloring-pages
-- https://www.promptlesspress.com/blog-best-selling-digital-products-etsy-2026
-- https://naomijane.substack.com/p/low-and-medium-content-books-on-amazon
-- https://www.inkfluenceai.com/blog/sell-ai-coloring-books-on-kdp-2026
-- https://univers.studio/blog/kdp-ai-content-policy-2026/
-- https://babapixels.gumroad.com/l/FarmAnimalColoringBook
-- https://payhip.com/b/ErPZ3
-- https://www.shopifreaks.com/?p=20989
+- https://findniche.com/etsy-product/personalized-nursery-rhymes-book-custom--4464398490
+- https://payhip.com/b/Q62Kg
+- https://payhip.com/b/qzpH4
+- https://www.etsy.com/shop/MissyPrintableDesign
+- https://www.etsy.com/shop/AlpharickEdition
+- https://www.etsy.com/de/shop/TreasuredColor
+- https://www.etsy.com/shop/KrayonQueen
+- https://univers.studio/name-coloring/
+- https://bookcoverslab.com/blog/best-name-coloring-page-generators-2026
 - https://findniche.com/etsy-product/100-000-coloring-pages-bundle-100-books--4482369277
+- https://www.etsy.com/listing/4443177931/count-and-color-farm-animals-110-o
+- https://shop.homeschoolpreschool.net/?p=48977
+- https://www.twinkl.com/resource/farm-toddler-busy-book-us-pd-1726954417
+- https://www.etsy.com/listing/4524344548
+- https://happylittlellama.gumroad.com/l/tractor-coloring-book
+- https://shop.deere.com/us/product/Tractors%2C-Trucks-%26-Animals-Coloring-Book/p/LP86594
+- https://www.walmart.com/ip/260950627
