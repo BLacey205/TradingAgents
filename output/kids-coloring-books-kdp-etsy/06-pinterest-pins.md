@@ -66,9 +66,9 @@ Board names are unverified search terms; check Pinterest's search suggestions.
 ### B1 — seasonal static (separate board)
 
 - Title: Printable Harvest Time Coloring Pages for Kids
-- Description: Ten fall farm drawings with very thick outlines: hen on a nest, horse and foal, mouse on a hay bale, llama, scarecrow, farmhouse, windmill, apple tree, pumpkin and farm truck. Printable PDF for home printing, made for little hands and chunky crayons. AI-generated line art, disclosed on the listing.
+- Description: Ten harvest-season farm drawings with very thick outlines: hen on a nest, horse and foal, mouse on a hay bale, llama, scarecrow, farmhouse, windmill, apple tree, pumpkin and farm truck. Printable PDF for home printing, made for little hands and chunky crayons. AI-generated line art, disclosed on the listing.
 - Cover text: HARVEST TIME FARM PAGES (no price, no "limited time")
-- Alt text: Collage of fall farm coloring pages with a scarecrow, pumpkin and windmill
+- Alt text: Collage of harvest-season farm coloring pages with a scarecrow, pumpkin and windmill
 - Link: Harvest Time Etsy listing
 
 ### C1 — free page (GATED)
