@@ -227,17 +227,6 @@ class PortfolioDecision(BaseModel):
             "Underweight / Sell, picked based on the analysts' debate."
         ),
     )
-    confidence: int | None = Field(
-        default=None,
-        description=(
-            "Probability, from 0 to 100, that the rating's direction proves right "
-            "over the time horizon: for Buy/Overweight that the price rises, for "
-            "Sell/Underweight that it falls, for Hold that it stays range-bound. "
-            "50 means a coin flip; reserve 80+ for evidence that clearly points "
-            "one way. Be calibrated: across many calls, 70 should be right about "
-            "70% of the time."
-        ),
-    )
     executive_summary: str = Field(
         description=(
             "A concise action plan covering entry strategy, position sizing, "
@@ -249,6 +238,26 @@ class PortfolioDecision(BaseModel):
             "Detailed reasoning anchored in specific evidence from the analysts' "
             "debate. If prior lessons are referenced in the prompt context, "
             "incorporate them; otherwise rely solely on the current analysis."
+        ),
+    )
+    # Decided last, after the thesis: structured output is generated in field
+    # order, so a confidence placed before the reasoning gets committed first.
+    confidence_basis: str | None = Field(
+        default=None,
+        description=(
+            "One sentence, written before the confidence: where the analysts, the "
+            "bull/bear debate and the risk debate agree or disagree, and the "
+            "strongest evidence against the rating."
+        ),
+    )
+    confidence: int | None = Field(
+        default=None,
+        description=(
+            "Probability, 0-100, that the rating's direction proves right over the "
+            "decision horizon in the prompt: for Buy/Overweight that the price "
+            "rises, for Sell/Underweight that it falls, for Hold that it stays "
+            "range-bound. Derive it from confidence_basis using the rubric in the "
+            "prompt; do not default to a habitual round number."
         ),
     )
     price_target: float | None = Field(
@@ -282,7 +291,8 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     """
     parts = [f"**Rating**: {decision.rating.value}", ""]
     if decision.confidence is not None:
-        parts.extend([f"**Confidence**: {decision.confidence}%", ""])
+        basis = f" ({decision.confidence_basis.strip()})" if decision.confidence_basis else ""
+        parts.extend([f"**Confidence**: {decision.confidence}%{basis}", ""])
     parts += [
         f"**Executive Summary**: {decision.executive_summary}",
         "",

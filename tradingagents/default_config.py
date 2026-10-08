@@ -106,6 +106,9 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Output language for analyst reports and final decision
     # Internal agent debate stays in English for reasoning quality
     "output_language": "English",
+    # Trading days the Portfolio Manager's confidence refers to. None = its own
+    # stated time horizon; backtests set it to the holding period they score.
+    "decision_horizon_days": None,
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,

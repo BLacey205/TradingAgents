@@ -591,15 +591,21 @@ _RATING_SETTINGS = (
     "llm_provider", "deep_think_llm", "quick_think_llm", "backend_url",
     "max_debate_rounds", "max_risk_discuss_rounds", "output_language",
     "temperature", "google_thinking_level", "openai_reasoning_effort",
-    "anthropic_effort", "memory_log_path",
+    "anthropic_effort", "memory_log_path", "decision_horizon_days",
 )
 
 
-def backtest_config(config: dict, use_memory: bool = False) -> dict:
-    """Copy ``config`` for a backtest; the memory log is off unless requested."""
+def backtest_config(config: dict, use_memory: bool = False, holding_days: int | None = None) -> dict:
+    """Copy ``config`` for a backtest; the memory log is off unless requested.
+
+    ``holding_days`` pins the Portfolio Manager's confidence to the window the
+    backtest scores, so stated probabilities and outcomes measure the same thing.
+    """
     cfg = dict(config)
     if not use_memory:
         cfg["memory_log_path"] = None
+    if holding_days:
+        cfg["decision_horizon_days"] = holding_days
     return cfg
 
 
@@ -634,7 +640,7 @@ def run_backtest(
     dates = trade_dates(start, end, frequency)
     if not dates:
         raise ValueError(f"no business days between {start} and {end}")
-    cfg = backtest_config(config or DEFAULT_CONFIG, use_memory=use_memory)
+    cfg = backtest_config(config or DEFAULT_CONFIG, use_memory=use_memory, holding_days=holding_days)
 
     stats = UsageCounter()
     graph = TradingAgentsGraph(

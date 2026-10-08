@@ -49,6 +49,20 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+def get_decision_horizon() -> str:
+    """Horizon the Portfolio Manager's confidence is stated over.
+
+    ``decision_horizon_days`` (set by backtests to their holding period) pins it
+    to a number of trading days so the stated probability can be scored against
+    that same window; otherwise it is the decision's own time horizon.
+    """
+    from tradingagents.dataflows.config import get_config
+    days = get_config().get("decision_horizon_days")
+    if days:
+        return f"the next {int(days)} trading days"
+    return "your stated time horizon"
+
+
 def get_language_instruction() -> str:
     """Return a prompt instruction for the configured output language.
 
