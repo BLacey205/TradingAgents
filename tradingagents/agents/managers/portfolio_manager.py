@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
 from tradingagents.agents.utils.agent_utils import (
+    get_decision_horizon,
     get_instrument_context_from_state,
     get_language_instruction,
 )
@@ -33,6 +34,7 @@ def create_portfolio_manager(llm):
         research_plan = state["investment_plan"]
         trader_plan = state["trader_investment_plan"]
 
+        horizon = get_decision_horizon()
         past_context = state.get("past_context", "")
         lessons_line = (
             f"- Lessons from prior decisions and outcomes:\n{past_context}\n"
@@ -53,7 +55,12 @@ def create_portfolio_manager(llm):
 - **Underweight**: Reduce exposure, take partial profits
 - **Sell**: Exit position or avoid entry
 
-**Confidence**: also state, from 0 to 100, how likely the rating's direction is to prove right over your time horizon (50 = coin flip). Be calibrated rather than bold: weigh how strongly the evidence actually agrees.
+**Confidence** (decide it last, after the thesis): the probability, 0-100, that the rating's direction proves right over {horizon}. First write one sentence on where the analysts, the bull/bear debate and the risk debate agree or disagree, and the strongest evidence against your rating; then score it:
+- **50-55**: evidence mixed, or the debates ended unresolved
+- **56-65**: a lean; credible counter-evidence remains
+- **66-75**: most of the team agrees and the opposing case is weak
+- **76-90**: the analysts and both debates agree, with a specific near-term catalyst
+Over a few trading days price direction is close to a coin flip, so short horizons rarely justify more than the mid-60s. Use the whole range: two decisions with different evidence should not get the same number.
 
 **Context:**
 - Research Manager's investment plan: **{research_plan}**

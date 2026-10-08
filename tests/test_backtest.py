@@ -295,6 +295,11 @@ def test_invalid_rating_is_an_error(tmp_path):
 # Config isolation
 # ---------------------------------------------------------------------------
 
+def test_backtest_config_pins_the_decision_horizon():
+    assert bt.backtest_config({}, holding_days=10)["decision_horizon_days"] == 10
+    assert "decision_horizon_days" not in bt.backtest_config({})
+
+
 def test_memory_log_disabled_by_default():
     cfg = bt.backtest_config({"memory_log_path": "/real/log.md", "x": 1})
     assert cfg["memory_log_path"] is None and cfg["x"] == 1
@@ -320,6 +325,8 @@ def test_run_backtest_wires_graph_and_isolates_memory(tmp_path, monkeypatch):
         selected_analysts=["market"],
     )
     assert built["config"]["memory_log_path"] is None
+    # Confidence is stated over the same window the backtest scores.
+    assert built["config"]["decision_horizon_days"] == 5
     assert built["analysts"] == ["market"]
     assert isinstance(built["callbacks"][0], bt.UsageCounter)
     assert result.summary["decisions"] == 2

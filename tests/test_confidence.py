@@ -57,9 +57,71 @@ def test_rendered_decision_without_confidence_is_unchanged():
 
 
 @pytest.mark.unit
-def test_confidence_field_is_documented_for_the_model():
+def test_confidence_field_is_documented_without_number_anchors():
     description = PortfolioDecision.model_fields["confidence"].description
-    assert "0 to 100" in description and "calibrated" in description.lower()
+    assert "0-100" in description and "rubric" in description
+    # Example numbers in the instruction ("70 should be right 70% of the time",
+    # "reserve 80+") anchored every decision at 75 in a live backtest.
+    assert "70" not in description and "80" not in description
+
+
+@pytest.mark.unit
+def test_confidence_is_generated_after_the_reasoning():
+    # Structured output is written in field order: the basis and the number
+    # must come after the thesis, not straight after the rating.
+    fields = list(PortfolioDecision.model_json_schema()["properties"])
+    assert fields.index("investment_thesis") < fields.index("confidence_basis") < fields.index("confidence")
+
+
+@pytest.mark.unit
+def test_rendered_confidence_carries_its_basis_and_still_parses():
+    text = render_pm_decision(_decision(
+        rating=PortfolioRating.OVERWEIGHT, confidence=58,
+        confidence_basis="Analysts agree on demand, but the bear case on valuation went unanswered.",
+    ))
+    assert "**Confidence**: 58% (Analysts agree on demand" in text
+    assert parse_confidence(text) == 58
+    assert parse_rating(text) == "Overweight"
+
+
+@pytest.mark.unit
+def test_decision_horizon_follows_config():
+    from tradingagents.agents.utils.agent_utils import get_decision_horizon
+    from tradingagents.dataflows.config import set_config
+
+    assert get_decision_horizon() == "your stated time horizon"
+    set_config({"decision_horizon_days": 5})
+    assert get_decision_horizon() == "the next 5 trading days"
+
+
+@pytest.mark.unit
+def test_portfolio_manager_prompt_states_rubric_and_horizon():
+    from unittest.mock import MagicMock
+
+    from tradingagents.agents.managers.portfolio_manager import create_portfolio_manager
+    from tradingagents.dataflows.config import set_config
+
+    set_config({"decision_horizon_days": 5})
+    captured = {}
+    structured = MagicMock()
+    structured.invoke.side_effect = lambda prompt: captured.__setitem__("prompt", prompt) or _decision()
+    llm = MagicMock()
+    llm.with_structured_output.return_value = structured
+    risk = {
+        "history": "h", "aggressive_history": "a", "conservative_history": "c",
+        "neutral_history": "n", "current_aggressive_response": "",
+        "current_conservative_response": "", "current_neutral_response": "",
+        "latest_speaker": "Neutral", "count": 1,
+    }
+    create_portfolio_manager(llm)({
+        "company_of_interest": "NVDA", "risk_debate_state": risk,
+        "investment_plan": "plan", "trader_investment_plan": "trader plan",
+    })
+    prompt = captured["prompt"]
+    prompt = prompt if isinstance(prompt, str) else str(prompt)
+    assert "over the next 5 trading days" in prompt
+    for band in ("50-55", "56-65", "66-75", "76-90"):
+        assert band in prompt
 
 
 # ---------------------------------------------------------------------------
