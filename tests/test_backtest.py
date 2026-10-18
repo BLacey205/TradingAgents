@@ -102,22 +102,23 @@ def test_unknown_frequency_rejected():
 # Forward returns
 # ---------------------------------------------------------------------------
 
-def test_forward_return_enters_on_trade_date_close():
-    closes = _closes("2025-01-06", [100, 101, 102, 103, 104, 110, 120])
+def test_forward_return_enters_at_first_close_after_trade_date():
+    # The trade date's own close (100) is not tradable; entry is the next bar.
+    closes = _closes("2025-01-06", [100, 101, 102, 103, 104, 105, 111.1])
     ret, days = bt.forward_return(closes, "2025-01-06", 5)
     assert ret == pytest.approx(0.10)
     assert days == 5
 
 
 def test_forward_return_rolls_to_next_bar_when_date_is_not_trading():
-    # 2025-01-04 is a Saturday: enter at Monday's close.
+    # 2025-01-04 is a Saturday: the first close after it is Monday's.
     closes = _closes("2025-01-06", [100, 105, 110], tz=None)
     ret, _ = bt.forward_return(closes, "2025-01-04", 1)
     assert ret == pytest.approx(0.05)
 
 
 def test_forward_return_none_when_window_incomplete():
-    closes = _closes("2025-01-06", [100, 101, 102])
+    closes = _closes("2025-01-06", [100, 101, 102, 103, 104, 105])
     assert bt.forward_return(closes, "2025-01-06", 5) == (None, None)
     assert bt.forward_return(pd.Series(dtype=float), "2025-01-06", 1) == (None, None)
 
@@ -145,9 +146,11 @@ def _run(tmp_path, ratings, stock, bench, **kwargs):
 
 
 def test_backtest_scores_calls_against_forward_returns(tmp_path):
-    # Stock: +10%, -10%, +5% over the three one-bar windows; benchmark flat.
-    stock = _closes("2025-01-06", [100, 110, 99, 103.95])
-    bench = _closes("2025-01-06", [50, 50, 50, 50])
+    # Stock: +10%, -10%, +5% over the three one-bar windows (each entered at the
+    # first close after its date; the leading bar is the first date's own close).
+    # Benchmark flat.
+    stock = _closes("2025-01-06", [100, 100, 110, 99, 103.95])
+    bench = _closes("2025-01-06", [50, 50, 50, 50, 50])
     ratings = {"2025-01-06": "Buy", "2025-01-07": "Sell", "2025-01-08": "Hold"}
 
     graph, result = _run(tmp_path, ratings, stock, bench)
@@ -181,8 +184,8 @@ def test_long_only_turns_sell_into_flat(tmp_path):
 
 
 def test_drawdown_and_alpha(tmp_path):
-    stock = _closes("2025-01-06", [100, 110, 88, 88])
-    bench = _closes("2025-01-06", [100, 105, 105, 105])
+    stock = _closes("2025-01-06", [100, 100, 110, 88, 88])
+    bench = _closes("2025-01-06", [100, 100, 105, 105, 105])
     _, result = _run(
         tmp_path, {"2025-01-06": "Buy", "2025-01-07": "Buy", "2025-01-08": "Buy"}, stock, bench,
     )
@@ -196,8 +199,8 @@ def test_drawdown_and_alpha(tmp_path):
 
 
 def test_unscorable_recent_dates_are_counted_not_scored(tmp_path):
-    stock = _closes("2025-01-06", [100, 101])
-    bench = _closes("2025-01-06", [50, 50])
+    stock = _closes("2025-01-06", [100, 100, 101])
+    bench = _closes("2025-01-06", [50, 50, 50])
     _, result = _run(tmp_path, {"2025-01-06": "Buy", "2025-01-07": "Buy"}, stock, bench)
     assert result.summary["scored"] == 1
     assert result.summary["unscored"] == 1
@@ -259,8 +262,8 @@ def test_resume_skips_completed_dates_and_retries_errors(tmp_path):
 
 
 def test_output_files_written(tmp_path):
-    stock = _closes("2025-01-06", [100, 110])
-    bench = _closes("2025-01-06", [50, 51])
+    stock = _closes("2025-01-06", [100, 100, 110])
+    bench = _closes("2025-01-06", [50, 50, 51])
     _run(tmp_path, {"2025-01-06": "Buy"}, stock, bench)
 
     summary = json.loads((tmp_path / "summary.json").read_text())

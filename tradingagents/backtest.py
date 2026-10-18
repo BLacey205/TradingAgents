@@ -4,8 +4,9 @@ Runs the full agent graph for one ticker on a schedule of historical dates,
 records each rating, then scores the calls against realized forward returns:
 
 - each rating maps to a target exposure (Buy +1 ... Sell -1),
-- the position is entered at the close of the trade date (the last bar the
-  agents could see) and held for ``holding_days`` price bars,
+- the position is entered at the first close after the trade date (the agents
+  read news published after the trade date's close, so that close is not
+  tradable) and held for ``holding_days`` price bars,
 - the scorecard reports hit rates, per-decision and compounded returns versus
   the benchmark, max drawdown, and LLM usage.
 
@@ -96,7 +97,10 @@ def _naive_dates(index: pd.Index) -> pd.DatetimeIndex:
 def forward_return(
     closes: pd.Series, trade_date: str, holding_days: int,
 ) -> tuple[float | None, int | None]:
-    """Return from the first close on/after ``trade_date`` to ``holding_days`` bars later.
+    """Return from the first close after ``trade_date`` to ``holding_days`` bars later.
+
+    A run dated ``trade_date`` reads news published after that day's close, so
+    the position cannot be entered at that close; it enters at the next one.
 
     Returns ``(None, None)`` when the entry bar or the full holding window is
     not in ``closes`` yet (too recent, delisted, or missing data), so a partial
@@ -105,7 +109,7 @@ def forward_return(
     if closes is None or len(closes) == 0:
         return None, None
     dates = _naive_dates(closes.index)
-    entry = int(dates.searchsorted(pd.Timestamp(trade_date)))
+    entry = int(dates.searchsorted(pd.Timestamp(trade_date), side="right"))
     exit_ = entry + holding_days
     if exit_ >= len(closes):
         return None, None
@@ -525,7 +529,7 @@ def render_summary(result: BacktestResult) -> str:
     lines += _render_calibration(s)
     lines += [
         "",
-        "Positions enter at the trade date's close and exit after the holding period. "
+        "Positions enter at the first close after the trade date and exit after the holding period. "
         "No transaction costs or slippage are modelled, news and social sources "
         "return current content even for past dates, and LLM output varies between "
         "runs, so treat one backtest as a single sample.",

@@ -56,7 +56,10 @@ def _resolve_entry(log, ticker, date, decision, reflection="Good call."):
 
 def _price_df(prices):
     """Minimal DataFrame matching yfinance .history() output shape."""
-    return pd.DataFrame({"Close": prices})
+    return pd.DataFrame(
+        {"Close": prices},
+        index=pd.date_range("2026-01-05", periods=len(prices), freq="B"),
+    )
 
 
 def _make_pm_state(past_context=""):
@@ -487,8 +490,9 @@ class TestDeferredReflection:
     # TradingAgentsGraph._fetch_returns
 
     def test_fetch_returns_valid_ticker(self):
-        stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
-        spy_prices   = [400.0, 402.0, 404.0, 403.0, 405.0, 406.0]
+        # First bar is the decision date's own close; entry is the next bar.
+        stock_prices = [99.0, 100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
+        spy_prices   = [399.0, 400.0, 402.0, 404.0, 403.0, 405.0, 406.0]
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         with patch("yfinance.Ticker") as mock_ticker_cls:
             def _make_ticker(sym):
@@ -498,6 +502,7 @@ class TestDeferredReflection:
             mock_ticker_cls.side_effect = _make_ticker
             raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
         assert raw is not None and alpha is not None and days is not None
+        assert raw == pytest.approx((106.0 - 100.0) / 100.0)  # entry = 2nd bar, not the 1st
         assert isinstance(raw, float) and isinstance(alpha, float) and isinstance(days, int)
         assert days == 5
 
@@ -534,7 +539,7 @@ class TestDeferredReflection:
             mock_ticker_cls.side_effect = _make_ticker
             raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
         assert raw is not None and alpha is not None and days is not None
-        assert days == 2
+        assert days == 1  # SPY has 3 bars; the first is dropped, leaving 1 holding day
 
     # TradingAgentsGraph._resolve_benchmark — picks index for alpha calc
 

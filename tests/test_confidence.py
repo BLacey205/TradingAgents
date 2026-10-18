@@ -126,8 +126,9 @@ def _run(tmp_path, calls, prices):
 
 @pytest.mark.unit
 def test_backtest_records_confidence_and_scores_calibration(tmp_path):
-    # Prices go up, down, up, up, flat: one-bar windows starting each day.
-    prices = [100, 110, 99, 105, 110, 110]
+    # Prices go up, down, up, up, flat: one-bar windows, each entered at the
+    # first close after its date (the leading bar is the first date's own close).
+    prices = [100, 100, 110, 99, 105, 110, 110]
     dates = list(pd.bdate_range("2025-01-06", periods=5).strftime("%Y-%m-%d"))
     calls = dict(zip(dates, [
         ("Buy", 90),    # up   -> right

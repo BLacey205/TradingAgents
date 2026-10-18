@@ -62,6 +62,14 @@ def _coerce_max_retries(value):
     return n
 
 
+def _bars_after(history, day: datetime):
+    """Rows of a yfinance history frame dated strictly after ``day``."""
+    index = history.index
+    if getattr(index, "tz", None) is not None:
+        index = index.tz_localize(None)
+    return history[index.normalize() > day]
+
+
 class TradingAgentsGraph:
     """Main class that orchestrates the trading agents framework."""
 
@@ -252,7 +260,10 @@ class TradingAgentsGraph:
         self, ticker: str, trade_date: str, holding_days: int = 5,
         benchmark: str = "SPY",
     ) -> tuple[float | None, float | None, int | None]:
-        """Fetch raw and alpha return for ticker over holding_days from trade_date.
+        """Fetch raw and alpha return for ticker over holding_days after trade_date.
+
+        The position is entered at the first close after ``trade_date``: a run
+        dated ``trade_date`` reads news published after that day's close.
 
         ``benchmark`` is the index used as the alpha baseline (resolved by the
         caller via ``_resolve_benchmark``). Returns ``(raw_return, alpha_return,
@@ -263,7 +274,9 @@ class TradingAgentsGraph:
 
         try:
             start = datetime.strptime(trade_date, "%Y-%m-%d")
-            end = start + timedelta(days=holding_days + 7)  # buffer for weekends/holidays
+            # Buffer for weekends/holidays, plus one session since entry is the
+            # first close after trade_date.
+            end = start + timedelta(days=holding_days + 8)
             end_str = end.strftime("%Y-%m-%d")
 
             # Normalize so the realized-return lookup hits the same instrument
@@ -271,6 +284,9 @@ class TradingAgentsGraph:
             # already a canonical Yahoo symbol from ``_resolve_benchmark``.
             stock = yf.Ticker(normalize_symbol(ticker)).history(start=trade_date, end=end_str)
             bench = yf.Ticker(benchmark).history(start=trade_date, end=end_str)
+            # Drop the decision date's own bar: enter at the next close.
+            stock = _bars_after(stock, start)
+            bench = _bars_after(bench, start)
 
             if len(stock) < 2 or len(bench) < 2:
                 return None, None, None
