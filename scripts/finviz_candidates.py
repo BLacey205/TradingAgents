@@ -29,7 +29,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import pandas as pd
 import requests
 
-from tradingagents.dataflows.utils import safe_ticker_component
+from tradingagents.dataflows.symbols import safe_ticker_component
 
 ALLOWED_HOSTS = {"elite.finviz.com", "finviz.com"}
 

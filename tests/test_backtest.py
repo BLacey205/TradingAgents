@@ -1,447 +1,306 @@
-"""Backtest runner: schedule, forward-return scoring, resume, and the CLI command.
+"""Backtesting: many single-shot decisions, scored by the memory log.
 
-A fake graph and an in-memory price loader stand in for the LLM pipeline and
-yfinance, so these tests make no network or model calls.
+A run already records its rating and later settles it with realized and alpha
+return against the regional benchmark. A backtest is that machinery over a grid
+of tickers and dates, aggregated. It evaluates decision quality; it does not
+simulate a portfolio, so there is no execution, no fees and no equity curve.
 """
 
-import json
+from __future__ import annotations
 
-import pandas as pd
 import pytest
-from typer.testing import CliRunner
-
-from tradingagents import backtest as bt
-from tradingagents.agents.utils.memory import TradingMemoryLog
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+from tradingagents.backtest import iter_grid, run_backtest, summarize
+from tradingagents.memory import TradingMemoryLog
 
-def _closes(start: str, values: list[float], tz: str | None = "America/New_York") -> pd.Series:
-    """Business-day close series, tz-aware like yfinance by default."""
-    idx = pd.bdate_range(start=start, periods=len(values), tz=tz)
-    return pd.Series(values, index=idx, dtype=float)
-
+DECISION = "Rating: Buy\n\nbuy it"
 
-class FakeGraph:
-    """Returns a scripted rating per date; ``None`` in the script raises."""
 
-    def __init__(self, ratings: dict[str, str | None], stats=None):
-        self.ratings = ratings
-        self.calls: list[tuple[str, str, str]] = []
-        self.stats = stats
+@pytest.mark.unit
+def test_grid_spacing_and_canonical_dates():
+    assert iter_grid("2026-01-05", "2026-01-20", every_n_days=7) == ["2026-01-05", "2026-01-12", "2026-01-19"]
 
-    def propagate(self, ticker, trade_date, asset_type="stock"):
-        self.calls.append((ticker, trade_date, asset_type))
-        if self.stats is not None:
-            self.stats.llm_calls += 3
-            self.stats.tokens_in += 100
-            self.stats.tokens_out += 10
-        rating = self.ratings[trade_date]
-        if rating is None:
-            raise RuntimeError("provider exploded")
-        return {}, rating
-
-    def _resolve_benchmark(self, ticker):
-        return "SPY"
 
+@pytest.mark.unit
+def test_grid_stops_at_today(monkeypatch):
+    import tradingagents.backtest as bt
 
-class Stats:
-    llm_calls = 0
-    tokens_in = 0
-    tokens_out = 0
-
-
-def _loader(series_by_symbol):
-    def load(symbol, start, end):
-        return series_by_symbol[symbol]
-    return load
+    monkeypatch.setattr(bt, "get_current_date", lambda: "2026-01-10")
+    assert iter_grid("2026-01-05", "2026-02-20", every_n_days=5) == ["2026-01-05", "2026-01-10"]
 
-
-# ---------------------------------------------------------------------------
-# Schedule
-# ---------------------------------------------------------------------------
-
-def test_weekly_schedule_repeats_on_the_start_weekday():
-    # 2025-01-01 is a Wednesday: every Wednesday, so 5-bar windows never overlap.
-    assert bt.trade_dates("2025-01-01", "2025-01-22", "weekly") == [
-        "2025-01-01", "2025-01-08", "2025-01-15", "2025-01-22",
-    ]
-    # A weekend start rolls to Monday.
-    assert bt.trade_dates("2025-01-04", "2025-01-13", "weekly") == ["2025-01-06", "2025-01-13"]
-    assert bt.trade_dates("2025-01-04", "2025-01-05", "weekly") == []
-
-
-def test_default_weekly_schedule_does_not_overlap_default_holding(tmp_path):
-    dates = bt.trade_dates("2025-01-01", "2025-03-31", "weekly")
-    stock = _closes("2025-01-01", [100 + i for i in range(80)])
-    bench = _closes("2025-01-01", [50.0] * 80)
-    runner = bt.Backtester(
-        FakeGraph(dict.fromkeys(dates, "Buy")), "NVDA", tmp_path, holding_days=5,
-        price_loader=_loader({"NVDA": stock, "SPY": bench}),
-    )
-    assert runner.run(dates).summary["overlapping_windows"] is False
-
-
-def test_monthly_and_daily_schedules():
-    assert bt.trade_dates("2025-01-15", "2025-03-31", "monthly") == [
-        "2025-01-15", "2025-02-03", "2025-03-03",
-    ]
-    # Weekends are skipped.
-    assert bt.trade_dates("2025-01-03", "2025-01-07", "daily") == [
-        "2025-01-03", "2025-01-06", "2025-01-07",
-    ]
-
-
-def test_unknown_frequency_rejected():
-    with pytest.raises(ValueError, match="frequency"):
-        bt.trade_dates("2025-01-01", "2025-02-01", "hourly")
-
-
-# ---------------------------------------------------------------------------
-# Forward returns
-# ---------------------------------------------------------------------------
-
-def test_forward_return_enters_at_first_close_after_trade_date():
-    # The trade date's own close (100) is not tradable; entry is the next bar.
-    closes = _closes("2025-01-06", [100, 101, 102, 103, 104, 105, 111.1])
-    ret, days = bt.forward_return(closes, "2025-01-06", 5)
-    assert ret == pytest.approx(0.10)
-    assert days == 5
-
 
-def test_forward_return_rolls_to_next_bar_when_date_is_not_trading():
-    # 2025-01-04 is a Saturday: the first close after it is Monday's.
-    closes = _closes("2025-01-06", [100, 105, 110], tz=None)
-    ret, _ = bt.forward_return(closes, "2025-01-04", 1)
-    assert ret == pytest.approx(0.05)
-
-
-def test_forward_return_none_when_window_incomplete():
-    closes = _closes("2025-01-06", [100, 101, 102, 103, 104, 105])
-    assert bt.forward_return(closes, "2025-01-06", 5) == (None, None)
-    assert bt.forward_return(pd.Series(dtype=float), "2025-01-06", 1) == (None, None)
-
-
-# ---------------------------------------------------------------------------
-# Scoring
-# ---------------------------------------------------------------------------
-
-def test_rating_exposure_and_long_only():
-    assert bt.rating_exposure("Sell") == -1.0
-    assert bt.rating_exposure("Underweight", long_only=True) == 0.0
-    assert bt.rating_exposure("Buy", long_only=True) == 1.0
-    assert bt.rating_exposure(None) is None
-
-
-def _run(tmp_path, ratings, stock, bench, **kwargs):
-    stats = Stats()
-    graph = FakeGraph(ratings, stats=stats)
-    runner = bt.Backtester(
-        graph, "NVDA", tmp_path, holding_days=1,
-        price_loader=_loader({"NVDA": stock, "SPY": bench}),
-        stats=stats, **kwargs,
-    )
-    return graph, runner.run(list(ratings))
-
-
-def test_backtest_scores_calls_against_forward_returns(tmp_path):
-    # Stock: +10%, -10%, +5% over the three one-bar windows (each entered at the
-    # first close after its date; the leading bar is the first date's own close).
-    # Benchmark flat.
-    stock = _closes("2025-01-06", [100, 100, 110, 99, 103.95])
-    bench = _closes("2025-01-06", [50, 50, 50, 50, 50])
-    ratings = {"2025-01-06": "Buy", "2025-01-07": "Sell", "2025-01-08": "Hold"}
-
-    graph, result = _run(tmp_path, ratings, stock, bench)
-    s = result.summary
-
-    assert [c[1] for c in graph.calls] == list(ratings)
-    by_date = {r.trade_date: r for r in result.records}
-    assert by_date["2025-01-06"].strategy_return == pytest.approx(0.10)
-    assert by_date["2025-01-07"].strategy_return == pytest.approx(0.10)  # short a -10% move
-    assert by_date["2025-01-08"].strategy_return == 0.0
-
-    assert s["decisions"] == 3 and s["scored"] == 3 and s["errors"] == 0
-    assert s["active_calls"] == 2
-    assert s["hit_rate"] == 1.0
-    assert s["cumulative_strategy_return"] == pytest.approx(1.1 * 1.1 - 1)
-    assert s["cumulative_benchmark_return"] == pytest.approx(0.0)
-    assert s["max_drawdown"] == pytest.approx(0.0)
-    assert s["rating_counts"] == {"Buy": 1, "Sell": 1, "Hold": 1}
-    assert s["llm_calls"] == 9 and s["tokens_in"] == 300 and s["tokens_out"] == 30
-    assert s["overlapping_windows"] is False
-
-
-def test_long_only_turns_sell_into_flat(tmp_path):
-    stock = _closes("2025-01-06", [100, 90, 81])
-    bench = _closes("2025-01-06", [50, 50, 50])
-    _, result = _run(
-        tmp_path, {"2025-01-06": "Sell", "2025-01-07": "Sell"}, stock, bench, long_only=True,
-    )
-    assert result.summary["active_calls"] == 0
-    assert result.summary["cumulative_strategy_return"] == pytest.approx(0.0)
-
-
-def test_drawdown_and_alpha(tmp_path):
-    stock = _closes("2025-01-06", [100, 100, 110, 88, 88])
-    bench = _closes("2025-01-06", [100, 100, 105, 105, 105])
-    _, result = _run(
-        tmp_path, {"2025-01-06": "Buy", "2025-01-07": "Buy", "2025-01-08": "Buy"}, stock, bench,
-    )
-    s = result.summary
-    # Equity 1.10 -> 0.88 -> 0.88: a 20% drawdown from the peak.
-    assert s["max_drawdown"] == pytest.approx(-0.20)
-    first = result.records[0]
-    assert first.alpha == pytest.approx(0.10 - 0.05)
-    # Beat the benchmark only in the first window; a flat window is not a hit.
-    assert s["alpha_hit_rate"] == pytest.approx(1 / 3)
-
-
-def test_unscorable_recent_dates_are_counted_not_scored(tmp_path):
-    stock = _closes("2025-01-06", [100, 100, 101])
-    bench = _closes("2025-01-06", [50, 50, 50])
-    _, result = _run(tmp_path, {"2025-01-06": "Buy", "2025-01-07": "Buy"}, stock, bench)
-    assert result.summary["scored"] == 1
-    assert result.summary["unscored"] == 1
-
-
-def test_overlapping_windows_flagged(tmp_path):
-    stock = _closes("2025-01-06", list(range(100, 120)))
-    bench = _closes("2025-01-06", [50] * 20)
-    runner = bt.Backtester(
-        FakeGraph({"2025-01-06": "Buy", "2025-01-07": "Buy"}), "NVDA", tmp_path,
-        holding_days=5, price_loader=_loader({"NVDA": stock, "SPY": bench}),
-    )
-    result = runner.run(["2025-01-06", "2025-01-07"])
-    assert result.summary["overlapping_windows"] is True
-    assert "overlap" in (tmp_path / "summary.md").read_text()
-
-
-# ---------------------------------------------------------------------------
-# Errors, resume, and output files
-# ---------------------------------------------------------------------------
-
-def test_failed_date_is_recorded_and_run_continues(tmp_path):
-    stock = _closes("2025-01-06", [100, 101, 102])
-    bench = _closes("2025-01-06", [50, 50, 50])
-    _, result = _run(tmp_path, {"2025-01-06": None, "2025-01-07": "Buy"}, stock, bench)
-    assert result.summary["errors"] == 1
-    assert result.summary["decisions"] == 1
-    assert "provider exploded" in result.records[0].error
-
-
-def test_fail_fast_when_requested(tmp_path):
-    runner = bt.Backtester(
-        FakeGraph({"2025-01-06": None}), "NVDA", tmp_path,
-        price_loader=_loader({}), continue_on_error=False,
-    )
-    with pytest.raises(RuntimeError):
-        runner.run(["2025-01-06"])
-
-
-def test_resume_skips_completed_dates_and_retries_errors(tmp_path):
-    stock = _closes("2025-01-06", [100, 101, 102, 103])
-    bench = _closes("2025-01-06", [50, 50, 50, 50])
-    loader = _loader({"NVDA": stock, "SPY": bench})
-
-    first = FakeGraph({"2025-01-06": "Buy", "2025-01-07": None})
-    bt.Backtester(first, "NVDA", tmp_path, holding_days=1, price_loader=loader).run(
-        ["2025-01-06", "2025-01-07"]
-    )
-
-    second = FakeGraph({"2025-01-06": "Sell", "2025-01-07": "Hold", "2025-01-08": "Buy"})
-    result = bt.Backtester(second, "NVDA", tmp_path, holding_days=1, price_loader=loader).run(
-        ["2025-01-06", "2025-01-07", "2025-01-08"]
-    )
-
-    # Completed date reused, errored date retried, new date run.
-    assert [c[1] for c in second.calls] == ["2025-01-07", "2025-01-08"]
-    assert [r.rating for r in result.records] == ["Buy", "Hold", "Buy"]
-    assert result.summary["errors"] == 0
-
-
-def test_output_files_written(tmp_path):
-    stock = _closes("2025-01-06", [100, 100, 110])
-    bench = _closes("2025-01-06", [50, 50, 51])
-    _run(tmp_path, {"2025-01-06": "Buy"}, stock, bench)
-
-    summary = json.loads((tmp_path / "summary.json").read_text())
-    assert summary["ticker"] == "NVDA" and summary["benchmark"] == "SPY"
-    assert summary["cumulative_strategy_return"] == pytest.approx(0.10)
-    rows = pd.read_csv(tmp_path / "results.csv")
-    assert list(rows["rating"]) == ["Buy"]
-    assert "# Backtest: NVDA vs SPY" in (tmp_path / "summary.md").read_text()
-
-
-def test_price_download_failure_leaves_calls_unscored(tmp_path):
-    def broken(symbol, start, end):
-        raise ConnectionError("offline")
-
-    runner = bt.Backtester(
-        FakeGraph({"2025-01-06": "Buy"}), "NVDA", tmp_path, price_loader=broken,
-    )
-    result = runner.run(["2025-01-06"])
-    assert result.summary["decisions"] == 1
-    assert result.summary["scored"] == 0
-
-
-def test_invalid_rating_is_an_error(tmp_path):
-    runner = bt.Backtester(
-        FakeGraph({"2025-01-06": "Moon"}), "NVDA", tmp_path, price_loader=_loader({}),
-    )
-    record = runner.run_date("2025-01-06")
-    assert record.rating is None and "unrecognised rating" in record.error
-
-
-# ---------------------------------------------------------------------------
-# Config isolation
-# ---------------------------------------------------------------------------
-
-def test_memory_log_disabled_by_default():
-    cfg = bt.backtest_config({"memory_log_path": "/real/log.md", "x": 1})
-    assert cfg["memory_log_path"] is None and cfg["x"] == 1
-    assert TradingMemoryLog(cfg).get_pending_entries() == []
-    kept = bt.backtest_config({"memory_log_path": "/real/log.md"}, use_memory=True)
-    assert kept["memory_log_path"] == "/real/log.md"
-
-
-def test_run_backtest_wires_graph_and_isolates_memory(tmp_path, monkeypatch):
-    built = {}
-
-    class StubGraph(FakeGraph):
-        def __init__(self, selected_analysts, config, callbacks):
-            super().__init__(dict.fromkeys(bt.trade_dates("2025-01-06", "2025-01-17"), "Hold"))
-            built.update(analysts=selected_analysts, config=config, callbacks=callbacks)
-
-    monkeypatch.setattr("tradingagents.graph.trading_graph.TradingAgentsGraph", StubGraph)
-    monkeypatch.setattr(bt, "fetch_closes", lambda *a: pd.Series(dtype=float))
-
-    result = bt.run_backtest(
-        "NVDA", "2025-01-06", "2025-01-17",
-        config={"memory_log_path": "/real/log.md", "results_dir": str(tmp_path)},
-        selected_analysts=["market"],
-    )
-    assert built["config"]["memory_log_path"] is None
-    assert built["analysts"] == ["market"]
-    assert isinstance(built["callbacks"][0], bt.UsageCounter)
-    assert result.summary["decisions"] == 2
-    assert result.output_dir == tmp_path / "backtests" / "NVDA_2025-01-06_2025-01-17"
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-def test_cli_backtest_passes_options(tmp_path, monkeypatch):
-    from cli import main as cli_main
-
-    captured = {}
-
-    def fake_run(ticker, start, end, **kwargs):
-        captured.update(ticker=ticker, start=start, end=end, **kwargs)
-        return bt.BacktestResult(
-            ticker=ticker, benchmark="SPY", holding_days=kwargs["holding_days"],
-            long_only=kwargs["long_only"], records=[],
-            summary=bt.summarize([], kwargs["holding_days"]), output_dir=tmp_path,
-        )
-
-    monkeypatch.setattr(bt, "run_backtest", fake_run)
-    result = CliRunner().invoke(cli_main.app, [
-        "backtest", "btcusd", "--start", "2025-01-01", "--end", "2025-03-01",
-        "--frequency", "monthly", "--holding-days", "10", "--long-only",
-        "--output-dir", str(tmp_path),
+@pytest.mark.unit
+def test_grid_rejects_a_non_canonical_date():
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        iter_grid("2026-1-5", "2026-01-20")
+
+
+class _FakeGraph:
+    """Stands in for TradingAgentsGraph, writing to the log the harness gave it."""
+
+    instances: list = []
+    fail_on: set = set()
+
+    def __init__(self, selected_analysts=None, config=None, **kw):
+        self.analysts = list(selected_analysts) if selected_analysts else None
+        self.config = config
+        self.memory_log = TradingMemoryLog(config)
+        self.calls = []
+        self.settled = []
+        _FakeGraph.instances.append(self)
+
+    def propagate(self, ticker, trade_date, asset_type="stock", portfolio=None):
+        self.calls.append((ticker, trade_date))
+        if (ticker, trade_date) in _FakeGraph.fail_on:
+            raise RuntimeError("vendor exploded")
+        self.memory_log.store_decision(ticker, trade_date, DECISION)
+        return {"final_trade_decision": DECISION}, "Buy"
+
+    def settle_pending(self, ticker):
+        self.settled.append(ticker)
+
+
+@pytest.fixture(autouse=True)
+def _fake_graph(monkeypatch, tmp_path):
+    import tradingagents.backtest as bt
+
+    _FakeGraph.instances = []
+    _FakeGraph.fail_on = set()
+    monkeypatch.setattr(bt, "TradingAgentsGraph", _FakeGraph)
+    return _FakeGraph
+
+
+def _config(tmp_path):
+    return {"results_dir": str(tmp_path / "results"),
+            "memory_log_path": str(tmp_path / "live_trading_memory.md")}
+
+
+@pytest.mark.unit
+def test_the_live_memory_log_is_never_written(tmp_path):
+    config = _config(tmp_path)
+    result = run_backtest(["NVDA"], ["2026-01-05", "2026-01-12"], config)
+
+    assert not (tmp_path / "live_trading_memory.md").exists()
+    assert result.log_path.exists() and result.cells_run == 2
+
+
+@pytest.mark.unit
+def test_a_cell_already_in_the_log_is_not_run_again(tmp_path):
+    config = _config(tmp_path)
+    first = run_backtest(["NVDA"], ["2026-01-05"], config)
+
+    again = run_backtest(["NVDA"], ["2026-01-05", "2026-01-12"], config, run_id=first.run_id)
+
+    assert again.cells_run == 1 and again.skipped == 1
+    assert _FakeGraph.instances[-1].calls == [("NVDA", "2026-01-12")]
+
+
+@pytest.mark.unit
+def test_every_ticker_is_settled_after_the_grid(tmp_path):
+    """Settlement runs at the start of the next same-ticker run, so the last
+    date of each ticker would stay pending without an explicit pass."""
+    run_backtest(["NVDA", "AAPL"], ["2026-01-05", "2026-01-12"], _config(tmp_path))
+    assert sorted(_FakeGraph.instances[-1].settled) == ["AAPL", "NVDA"]
+
+
+@pytest.mark.unit
+def test_a_failed_cell_does_not_abort_the_sweep(tmp_path):
+    _FakeGraph.fail_on = {("NVDA", "2026-01-05")}
+    result = run_backtest(["NVDA"], ["2026-01-05", "2026-01-12"], _config(tmp_path))
+
+    assert result.cells_run == 1
+    assert result.failures == [("NVDA", "2026-01-05", "vendor exploded")]
+
+
+# --- reading the result ------------------------------------------------------
+
+def _log_with(tmp_path, rows):
+    log = TradingMemoryLog({"memory_log_path": str(tmp_path / "m.md")})
+    for ticker, date, decision, outcome in rows:
+        log.store_decision(ticker, date, decision)
+        if outcome is not None:
+            log.update_with_outcome(ticker, date, outcome[0], outcome[1], 5, "note", "2026-02-01")
+    return tmp_path / "m.md"
+
+
+@pytest.mark.unit
+def test_summary_scores_resolved_cells_and_keeps_pending_out_of_the_average(tmp_path):
+    log = _log_with(tmp_path, [
+        ("NVDA", "2026-01-05", "Rating: Buy\n\nx", (0.10, 0.04)),
+        ("NVDA", "2026-01-12", "Rating: Buy\n\nx", (-0.02, -0.02)),
+        ("AAPL", "2026-01-05", "Rating: Sell\n\nx", None),
     ])
-    assert result.exit_code == 0, result.output
-    assert captured["ticker"] == "BTC-USD"
-    assert captured["asset_type"] == "crypto"
-    # Fundamentals is dropped for crypto.
-    assert captured["selected_analysts"] == ["market", "social", "news"]
-    assert captured["frequency"] == "monthly"
-    assert captured["holding_days"] == 10
-    assert captured["long_only"] is True
-    assert captured["use_memory"] is False
+
+    summary = summarize(log)
+
+    assert summary.resolved == 2 and summary.pending == 1
+    buys = summary.by_rating["Buy"]
+    assert buys.count == 2 and buys.hit_rate == 0.5 and round(buys.mean_alpha, 4) == 0.01
+    assert "Sell" not in summary.by_rating  # unsettled: nothing to score yet
 
 
-@pytest.mark.parametrize("args, message", [
-    (["--start", "2025-13-01", "--end", "2025-02-01"], "YYYY-MM-DD"),
-    (["--start", "2025-03-01", "--end", "2025-02-01"], "on or before"),
-    (["--start", "2025-01-01", "--end", "2025-02-01", "-f", "hourly"], "frequency"),
-    (["--start", "2025-01-01", "--end", "2025-02-01", "--analysts", "astrology"], "analysts"),
-])
-def test_cli_backtest_rejects_bad_input(args, message):
-    from cli import main as cli_main
-
-    result = CliRunner().invoke(cli_main.app, ["backtest", "NVDA", *args])
-    assert result.exit_code != 0
-    assert message in result.output
+@pytest.mark.unit
+def test_summary_states_what_it_cannot_prove(tmp_path):
+    text = summarize(_log_with(tmp_path, [("NVDA", "2026-01-05", DECISION, (0.1, 0.05))])).render()
+    assert "not archived" in text
+    assert "one" in text.lower() and "sampl" in text.lower()
 
 
-@pytest.mark.parametrize("argv", [[], ["analyze"]])
-@pytest.mark.parametrize("flag, expected", [([], None), (["--checkpoint"], True)])
-def test_bare_command_still_runs_interactive_analysis(monkeypatch, argv, flag, expected):
-    # Adding `backtest` turned the CLI into a multi-command app; a bare
-    # `tradingagents` (with or without the checkpoint flag) must still start the
-    # interactive analysis, and `tradingagents analyze` must keep working.
-    from cli import main as cli_main
-
-    calls = []
-    monkeypatch.setattr(cli_main, "run_analysis", lambda checkpoint=None: calls.append(checkpoint))
-    result = CliRunner().invoke(cli_main.app, [*argv, *flag] if argv else flag)
-    assert result.exit_code == 0, result.output
-    assert calls == [expected]
+@pytest.mark.unit
+def test_the_analyst_set_under_test_is_the_one_that_runs(tmp_path):
+    """A backtest of a two-analyst setup must not silently run four."""
+    run_backtest(["NVDA"], ["2026-01-05"], _config(tmp_path), selected_analysts=["market", "news"])
+    assert _FakeGraph.instances[-1].analysts == ["market", "news"]
 
 
-def test_backtest_command_does_not_start_interactive_analysis(tmp_path, monkeypatch):
-    from cli import main as cli_main
-
-    monkeypatch.setattr(cli_main, "run_analysis", lambda **k: pytest.fail("analysis ran"))
-    monkeypatch.setattr(bt, "run_backtest", lambda *a, **k: bt.BacktestResult(
-        ticker="NVDA", benchmark="SPY", holding_days=5, long_only=False, records=[],
-        summary=bt.summarize([], 5), output_dir=tmp_path,
-    ))
-    result = CliRunner().invoke(
-        cli_main.app, ["backtest", "NVDA", "--start", "2025-01-01", "--end", "2025-01-31"],
-    )
-    assert result.exit_code == 0, result.output
+@pytest.mark.unit
+def test_a_run_id_cannot_escape_the_results_directory(tmp_path):
+    """run_id becomes a path segment, so it is validated like a ticker is."""
+    with pytest.raises(ValueError):
+        run_backtest(["NVDA"], ["2026-01-05"], _config(tmp_path), run_id="../../escaped")
+    with pytest.raises(ValueError):
+        run_backtest(["NVDA"], ["2026-01-05"], _config(tmp_path), run_id="/etc/cron.d/x")
 
 
-def test_resume_refuses_different_settings(tmp_path):
-    loader = _loader({"NVDA": pd.Series(dtype=float), "SPY": pd.Series(dtype=float)})
+@pytest.mark.unit
+def test_a_failed_settlement_does_not_lose_the_remaining_tickers(tmp_path, monkeypatch):
+    """Settlement reflects with an LLM, so it can fail; the sweep still returns
+    its result and every other ticker still gets settled."""
+    settled = []
 
-    def runner(model):
-        return bt.Backtester(
-            FakeGraph({"2025-01-06": "Buy"}), "NVDA", tmp_path, price_loader=loader,
-            run_settings={"deep_think_llm": model},
-        )
+    def _settle(self, ticker):
+        if ticker == "NVDA":
+            raise RuntimeError("reflector timed out")
+        settled.append(ticker)
 
-    runner("model-a").run(["2025-01-06"])
-    runner("model-a").run(["2025-01-06"])  # same settings resume fine
-    with pytest.raises(ValueError, match="deep_think_llm"):
-        runner("model-b").run(["2025-01-06"])
+    monkeypatch.setattr(_FakeGraph, "settle_pending", _settle, raising=False)
+    result = run_backtest(["NVDA", "AAPL"], ["2026-01-05"], _config(tmp_path))
 
-
-def test_resume_skips_a_line_cut_short_by_a_crash(tmp_path):
-    good = json.dumps({"trade_date": "2025-01-06", "rating": "Buy"})
-    (tmp_path / "decisions.jsonl").write_text(good + '\n{"trade_date": "2025-01-07", "rat')
-    graph = FakeGraph({"2025-01-06": "Sell", "2025-01-07": "Hold"})
-    result = bt.Backtester(graph, "NVDA", tmp_path, price_loader=_loader({})).run(
-        ["2025-01-06", "2025-01-07"]
-    )
-    assert [c[1] for c in graph.calls] == ["2025-01-07"]
-    assert [r.rating for r in result.records] == ["Buy", "Hold"]
+    assert result.cells_run == 2
+    assert settled == ["AAPL"]
+    assert result.settlement_failures == [("NVDA", "reflector timed out")]
 
 
-def test_cli_backtest_reports_settings_mismatch(monkeypatch):
-    from cli import main as cli_main
+@pytest.mark.unit
+def test_pending_note_appears_only_when_something_is_pending(tmp_path):
+    settled = [("NVDA", "2026-01-05", DECISION, (0.1, 0.05))]
+    assert "Pending" not in summarize(_log_with(tmp_path, settled)).render()
+    assert "Pending" in summarize(_log_with(tmp_path, settled + [("AAPL", "2026-01-05", DECISION, None)])).render()
 
-    def mismatch(*a, **k):
-        raise ValueError("holds a backtest with different settings (deep_think_llm)")
 
-    monkeypatch.setattr(bt, "run_backtest", mismatch)
-    result = CliRunner().invoke(
-        cli_main.app, ["backtest", "NVDA", "--start", "2025-01-01", "--end", "2025-01-31"],
-    )
-    assert result.exit_code == 1
-    assert "different settings" in result.output
-    assert "Traceback" not in result.output
+# --- scoring reads the direction the rating claimed ---------------------------
+
+def _scored(tmp_path, rows):
+    log = _log_with(tmp_path, rows)
+    return summarize(log).by_rating
+
+
+@pytest.mark.unit
+def test_a_bearish_call_that_fell_counts_as_right(tmp_path):
+    """Alpha below the benchmark is the outcome a Sell predicted; scoring it as
+    a miss reported the system as wrong exactly when it was right."""
+    scores = _scored(tmp_path, [
+        ("NVDA", "2026-01-05", "**Rating**: Sell\n\nx", (-0.08, -0.05)),
+        ("AAPL", "2026-01-05", "**Rating**: Underweight\n\nx", (-0.03, -0.02)),
+    ])
+    assert scores["Sell"].hit_rate == 1.0
+    assert scores["Underweight"].hit_rate == 1.0
+
+
+@pytest.mark.unit
+def test_a_bearish_call_that_rose_counts_as_wrong(tmp_path):
+    scores = _scored(tmp_path, [("NVDA", "2026-01-05", "**Rating**: Sell\n\nx", (0.08, 0.05))])
+    assert scores["Sell"].hit_rate == 0.0
+
+
+@pytest.mark.unit
+def test_a_bullish_call_is_scored_the_same_way_as_before(tmp_path):
+    scores = _scored(tmp_path, [
+        ("NVDA", "2026-01-05", "**Rating**: Buy\n\nx", (0.10, 0.04)),
+        ("AAPL", "2026-01-05", "**Rating**: Buy\n\nx", (-0.02, -0.02)),
+    ])
+    assert scores["Buy"].hit_rate == 0.5
+
+
+@pytest.mark.unit
+def test_hold_claims_no_direction_so_it_gets_no_hit_rate(tmp_path):
+    scores = _scored(tmp_path, [("NVDA", "2026-01-05", "**Rating**: Hold\n\nx", (0.01, 0.005))])
+    assert scores["Hold"].hit_rate is None
+    assert scores["Hold"].mean_alpha == 0.005
+
+
+@pytest.mark.unit
+def test_the_report_names_the_window_the_scores_cover(tmp_path):
+    text = summarize(_log_with(tmp_path, [
+        ("NVDA", "2026-01-05", "**Rating**: Buy\n\nx", (0.1, 0.05))])).render()
+    assert "5" in text and "day" in text.lower()
+    assert "Hold" not in text or "no direction" in text.lower()
+
+
+@pytest.mark.unit
+def test_the_window_reported_is_the_one_the_outcomes_used(tmp_path):
+    """The log records the window each outcome was measured over; the summary
+    must not claim a different one."""
+    log = TradingMemoryLog({"memory_log_path": str(tmp_path / "m.md")})
+    log.store_decision("NVDA", "2026-01-05", "**Rating**: Buy\n\nx")
+    log.update_with_outcome("NVDA", "2026-01-05", 0.1, 0.04, 21, "note", "2026-02-01")
+
+    assert "21 trading days" in summarize(tmp_path / "m.md").render()
+
+
+@pytest.mark.unit
+def test_a_backtest_result_is_summarized_directly(tmp_path):
+    """The result names its own log, so a caller never builds the log to score it."""
+    from tradingagents.backtest import BacktestResult
+
+    path = _log_with(tmp_path, [("NVDA", "2026-01-05", "Rating: Buy\n\nx", (0.10, 0.04))])
+
+    assert summarize(BacktestResult(run_id="r", log_path=path)).resolved == 1
+
+
+@pytest.mark.unit
+def test_a_log_path_that_does_not_exist_is_an_error_not_an_empty_summary(tmp_path):
+    missing = tmp_path / "no-such-dir" / "m.md"
+
+    with pytest.raises(FileNotFoundError):
+        summarize(missing)
+    assert not missing.parent.exists()
+
+
+@pytest.mark.unit
+def test_a_result_whose_cells_all_failed_summarizes_as_empty(tmp_path):
+    from tradingagents.backtest import BacktestResult
+
+    result = BacktestResult(run_id="r", log_path=tmp_path / "never-written.md")
+
+    assert summarize(result).resolved == 0
+
+
+@pytest.mark.unit
+def test_progress_is_reported_before_each_cell(tmp_path):
+    seen = []
+
+    run_backtest(["NVDA", "AAPL"], ["2026-01-05", "2026-01-12"], _config(tmp_path),
+                 progress=lambda done, total, ticker, date: seen.append((done, total, ticker, date)))
+
+    assert seen == [(1, 4, "NVDA", "2026-01-05"), (2, 4, "NVDA", "2026-01-12"),
+                    (3, 4, "AAPL", "2026-01-05"), (4, 4, "AAPL", "2026-01-12")]
+
+
+@pytest.mark.unit
+def test_a_resumed_sweep_reports_only_the_cells_it_runs(tmp_path):
+    first = run_backtest(["NVDA"], ["2026-01-05"], _config(tmp_path))
+    seen = []
+
+    run_backtest(["NVDA"], ["2026-01-05", "2026-01-12"], _config(tmp_path), run_id=first.run_id,
+                 progress=lambda done, total, ticker, date: seen.append((done, total, date)))
+
+    assert seen == [(1, 1, "2026-01-12")]
+
+
+@pytest.mark.unit
+def test_a_ticker_or_date_given_twice_runs_and_settles_once(tmp_path):
+    run_backtest(["NVDA", "NVDA"], ["2026-01-05", "2026-01-05"], _config(tmp_path))
+    graph = _FakeGraph.instances[-1]
+    assert graph.calls == [("NVDA", "2026-01-05")]
+    assert graph.settled == ["NVDA"]

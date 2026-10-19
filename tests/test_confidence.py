@@ -6,9 +6,9 @@ import json
 import pandas as pd
 import pytest
 
-from tradingagents import backtest as bt
+from tradingagents import walkforward as bt
 from tradingagents.agents.schemas import PortfolioDecision, PortfolioRating, render_pm_decision
-from tradingagents.agents.utils.rating import parse_confidence, parse_rating
+from tradingagents.agents.rating import parse_confidence, parse_rating
 
 
 def _decision(**kwargs):
