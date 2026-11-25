@@ -28,6 +28,7 @@ from .y_finance import (
     get_stock_stats_indicators_window,
     get_YFin_data_online,
 )
+from .yfinance_earnings import get_next_earnings as get_yfinance_next_earnings
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,8 @@ TOOLS_CATEGORIES = {
             "get_fundamentals",
             "get_balance_sheet",
             "get_cashflow",
-            "get_income_statement"
+            "get_income_statement",
+            "get_next_earnings",
         ]
     },
     "news_data": {
@@ -119,6 +121,9 @@ VENDOR_METHODS = {
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
+    },
+    "get_next_earnings": {
+        "yfinance": get_yfinance_next_earnings,
     },
     # news_data
     "get_news": {

@@ -17,11 +17,11 @@ CFG = RiskConfig()  # $1,000 account defaults
 
 
 def _spread(**kw):
-    base = dict(
-        underlying="XLF", side="put", short_strike=50.0, long_strike=49.0,
-        credit=0.20, expiration=TODAY + timedelta(days=38), sector="financials",
-        iv_rank=60.0, bid_ask=0.03,
-    )
+    base = {
+        "underlying": "XLF", "side": "put", "short_strike": 50.0, "long_strike": 49.0,
+        "credit": 0.20, "expiration": TODAY + timedelta(days=38), "sector": "financials",
+        "iv_rank": 60.0, "bid_ask": 0.03,
+    }
     base.update(kw)
     return CreditSpread(**base)
 
@@ -36,9 +36,9 @@ def test_max_loss_math():
 
 @pytest.mark.unit
 @pytest.mark.parametrize("kw", [
-    dict(credit=1.0), dict(credit=0), dict(contracts=0),
-    dict(short_strike=48.0),                      # put: short below long
-    dict(side="call", short_strike=50, long_strike=49),  # call: short above long
+    {"credit": 1.0}, {"credit": 0}, {"contracts": 0},
+    {"short_strike": 48.0},                      # put: short below long
+    {"side": "call", "short_strike": 50, "long_strike": 49},  # call: short above long
 ])
 def test_invalid_spreads_rejected(kw):
     with pytest.raises(ValueError):

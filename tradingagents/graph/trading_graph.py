@@ -22,6 +22,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_insider_transactions,
     get_macro_indicators,
     get_news,
+    get_next_earnings,
     get_prediction_markets,
     get_stock_data,
     get_verified_market_snapshot,
@@ -223,6 +224,7 @@ class TradingAgentsGraph:
                     get_balance_sheet,
                     get_cashflow,
                     get_income_statement,
+                    get_next_earnings,
                 ]
             ),
         }

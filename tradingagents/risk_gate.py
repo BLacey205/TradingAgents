@@ -24,9 +24,10 @@ Exit (checked in this order)
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Literal, Sequence
+from typing import Literal
 
 CONTRACT_MULTIPLIER = 100
 _EPS = 1e-9  # tolerance so exact-boundary prices trigger despite float error

@@ -77,3 +77,20 @@ def get_income_statement(
         str: A formatted report containing income statement data
     """
     return route_to_vendor("get_income_statement", ticker, freq, curr_date)
+
+
+@tool
+def get_next_earnings(
+    ticker: Annotated[str, "ticker symbol"],
+    curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+) -> str:
+    """
+    Retrieve the next (and most recent) earnings announcement date for a ticker.
+    Use it to avoid holding short options or leveraged positions through earnings.
+    Args:
+        ticker (str): Ticker symbol of the company
+        curr_date (str): Current date you are trading at, yyyy-mm-dd
+    Returns:
+        str: A short report with the next earnings date and days remaining
+    """
+    return route_to_vendor("get_next_earnings", ticker, curr_date)

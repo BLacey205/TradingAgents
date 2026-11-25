@@ -48,10 +48,46 @@ spread <= $0.05, and no earnings date before expiration.
 
 A $1-wide spread, $0.20 credit, ~85% win rate:
 win +$16, stopped loss about -$20, commissions about $2.60 round trip.
-Expected value is roughly +$8 per trade after commissions, less slippage.
-With 4-8 trades a month, **$20-$60 (2-6%) in a decent month**, with losing
-months possible. $1,000/month is not achievable at this size. Aim to grow the
+Back-of-envelope expected value is about +$8 per trade after commissions,
+before slippage, but the simulation below shows that estimate is optimistic.
+With 4-8 trades a month, the best case is **$20-$60 (2-6%)**, and losing months
+(or a negative edge after costs) are likely. $1,000/month is not achievable at this size. Aim to grow the
 account and the process; reinvest everything until ~$2,500.
+
+## What the simulation says (read this before trading it)
+
+`tradingagents/spread_backtest.py` replays the rules on synthetic price paths
+(Black-Scholes, 25% short-strike loss probability, $1-wide spreads, 700-bar
+random walks, 40 seeds, a weekly bullish signal with no real edge):
+
+| Case | Avg P&L per trade | Mean return per run |
+|---|---|---|
+| Rules, with costs ($0.02 slippage each way + $2.60 commissions) | -$3.09 | -10.1% |
+| Rules, no stop | -$1.97 | -5.7% |
+| Rules, no costs | +$3.82 | +15.3% |
+
+- **Friction is the whole game at this size.** A $1-wide spread pays about
+  $0.21, so $4 of slippage and $2.60 of commissions eat about a third of every
+  credit. The rules have a small positive edge before costs and a negative one
+  after.
+- **The 85% win rate in the video is not what the rules produce.** With the 2x
+  stop and 80% take-profit, simulated win rate was about 58%, because
+  marked-to-market stops fire often.
+- **A 15% loss-probability spread on a $1-wide width pays only about $0.05-$0.10**,
+  below the $0.20 minimum credit, so the gate rejects it. $0.20 needs roughly a
+  25% loss probability, which is a lower-probability trade than the video
+  describes.
+- These are synthetic results with an assumed volatility, so they show the
+  rules' sensitivity to costs, not real-market returns.
+
+Practical implications: use the cheapest commissions you can get (some brokers
+charge $0), trade only liquid underlyings with tight spreads, favor a wider
+spread (fewer, larger trades) once the account allows, and paper trade before
+risking real money.
+
+Run it on a real backtest with `tradingagents backtest NVDA --start ... --end ...
+--spreads --account-size 1000`, which writes `spread_trades.csv` and
+`spread_summary.md` next to the usual results.
 
 ## Growth path
 

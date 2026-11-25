@@ -1376,6 +1376,14 @@ def backtest(
         None, "--output-dir",
         help="Where to write results. Re-running with the same directory resumes.",
     ),
+    spreads: bool = typer.Option(
+        False, "--spreads",
+        help="Also replay the ratings as defined-risk credit spreads through the risk "
+        "gate (synthetic Black-Scholes pricing; see docs/options-income-strategy.md).",
+    ),
+    account_size: float = typer.Option(
+        1000.0, "--account-size", min=1.0, help="Starting equity for --spreads.",
+    ),
 ):
     """Run the agents on a schedule of past dates and score the calls.
 
@@ -1439,6 +1447,20 @@ def backtest(
     console.print()
     console.print(Markdown(render_summary(result)))
     console.print(f"\nResults written to [cyan]{result.output_dir}[/cyan]")
+
+    if spreads:
+        from tradingagents.risk_gate import RiskConfig
+        from tradingagents.spread_backtest import (
+            render_spread_summary,
+            run_spread_scoring,
+            write_spread_results,
+        )
+
+        spread_result = run_spread_scoring(result, risk_cfg=RiskConfig(account_size=account_size))
+        write_spread_results(spread_result, result.output_dir)
+        console.print()
+        console.print(Markdown(render_spread_summary(spread_result)))
+        console.print(f"Spread results written to [cyan]{result.output_dir}[/cyan]")
 
 
 if __name__ == "__main__":
