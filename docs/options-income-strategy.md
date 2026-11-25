@@ -89,6 +89,91 @@ Run it on a real backtest with `tradingagents backtest NVDA --start ... --end ..
 --spreads --account-size 1000`, which writes `spread_trades.csv` and
 `spread_summary.md` next to the usual results.
 
+## Wider spreads on a larger account
+
+Same synthetic setup (700-bar random walks, 30 seeds, 25% short-strike loss
+probability, ~40 trades per run, no signal edge). The underlying price scales
+with the width so the geometry is constant; slippage is 2% of width ($0.02 on a
+$1 spread, $0.10 on $5). Returns are over the whole ~1.6-year run, not per month.
+
+| Account / width / risk per trade | $0.65/leg, 2% slip | $0 broker (~$0.045/leg), 2% slip | $0 broker, 1% slip |
+|---|---|---|---|
+| $1,000 / $1 / 10% | -9.5% | -2.9% | +5.4% |
+| $2,500 / $2 / 10% | -5.2% | -1.7% | +5.9% |
+| $5,000 / $5 / 10% | -4.1% | -2.5% | +6.8% |
+| $10,000 / $5 / 5% | -1.9% | -1.0% | +3.7% |
+| $25,000 / $10 / 5% | -1.6% | -1.3% | +2.6% |
+
+- **Width alone doesn't fix it.** Slippage on a wider spread is larger in
+  dollars, so the cost drag stays near the same share of each credit. Wider
+  spreads mainly cut commission drag and smooth results (worst-case drawdowns
+  fall from about -25% to about -7 to -10% as the account grows and risk per
+  trade drops to 5%).
+- **What flips the sign is execution quality.** Filling within about 1% of the
+  spread width (limit orders near the mid, liquid underlyings) turns every row
+  positive in this model. At 2% every row is negative or flat.
+- **The result also depends on the volatility premium I assumed.** The model
+  prices options at 1.15x realized volatility. On the $10k / $5-wide case with
+  a $0 broker: 1.0x gives -4.5%, 1.15x gives -1.0%, 1.3x gives +3.6%. If real
+  implied volatility on your underlyings doesn't exceed realized by roughly
+  15% or more, the strategy has no edge to harvest.
+
+## Zero-commission brokers
+
+Sources: broker-comparison pages checked September 2026 (NerdWallet,
+Finder, ainvest) and the Robinhood and Webull fee pages. Fee schedules change;
+confirm on each broker's own page before funding an account.
+
+| Broker | Per-contract fee (stock/ETF options) | Notes |
+|---|---|---|
+| Robinhood | $0 | Regulatory/OCC fee of $0.04 per contract (buys and sells), plus small FINRA and CAT fees on sells; PFOF routing affects fill quality |
+| Webull | $0 | Charges $0.50 only on certain index options; some regulatory pass-through fees; fewer complex order types |
+| Moomoo | $0 | $0.50/contract on index options; Level 2 data and Greeks included |
+| Firstrade | $0 | Also $0 on exercise and assignment |
+| SoFi, Public | $0 (per NerdWallet) | Check spread (multi-leg) support and fill quality before relying on them |
+| Fidelity / Schwab | $0.65 | Fidelity waives the fee for buy-to-close orders at $0.65 or less, which fits closing at 80% profit |
+| tastytrade | $1.00 to open, $0 to close | Capped at $10 per leg; strong platform for spreads |
+| Interactive Brokers | about $0.40-$0.65, less with volume | Multi-leg orders are cheaper per contract |
+
+What "$0" really costs: about $0.045 per contract per leg in pass-through
+fees (Robinhood's published schedule), so a four-leg round trip is about $0.18,
+versus $2.60 at $0.65 per contract. In the simulation above that moves a $1
+spread from -9.5% to -2.9%. The remaining drag is slippage, so favor a broker
+with good multi-leg routing and limit-order fills over one that is merely free.
+
+Before choosing: confirm spread approval (Level 2 or 3), whether spreads work
+in a cash account or need margin, and paper trade the broker's order entry.
+
+## Measuring whether the agents add edge
+
+Everything above assumes the entry signal has no edge. The real question is
+whether the agents' ratings do. `tradingagents/signal_edge.py` tests that on
+real prices:
+
+```
+tradingagents backtest NVDA --start 2026-07-01 --end 2026-11-15 --frequency weekly
+tradingagents edge results/backtests/NVDA_2026-07-01_2026-11-15 --horizon 20
+```
+
+- **Directional test:** hit rate of Buy/Overweight (price up) and
+  Sell/Underweight (price down) calls versus the market's own base rate, with an
+  exact binomial p-value.
+- **Spread test:** replays the ratings as credit spreads and compares total P&L
+  with the same dates and ratings shuffled (permutation p-value), plus always
+  bullish and always bearish baselines.
+- **How much data you need:** about 150 independent decisions to confirm a 60%
+  hit rate at 80% power, and about 23 to confirm 75%. Weekly decisions on one
+  ticker give about 50 a year, so pool 10 or more tickers.
+- **Avoid fooling yourself:** use dates after the model's training cutoff
+  (earlier dates let it recall outcomes); keep decisions at least one horizon
+  apart (overlap inflates significance); and remember that testing many tickers,
+  horizons and settings will produce a "significant" result by luck, so confirm
+  on data you haven't looked at.
+
+Not yet run: the sandbox this was built in has no LLM provider keys and blocks
+Yahoo, so the harness is tested on synthetic signals (it detects a planted 85%
+edge and does not flag random signals), not on real agent output.
+
 ## Growth path
 
 | Account | Upgrade |

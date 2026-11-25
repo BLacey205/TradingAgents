@@ -1463,5 +1463,31 @@ def backtest(
         console.print(f"Spread results written to [cyan]{result.output_dir}[/cyan]")
 
 
+@app.command()
+def edge(
+    results_dir: str = typer.Argument(..., help="A backtest output directory (holds decisions.jsonl)."),
+    horizon: int = typer.Option(20, "--horizon", min=1, help="Bars to score each directional call over."),
+    permutations: int = typer.Option(100, "--permutations", min=0, help="Shuffles for the spread test (0 skips it)."),
+    account_size: float = typer.Option(1000.0, "--account-size", min=1.0, help="Starting equity for the spread test."),
+):
+    """Test whether a backtest's ratings beat chance (directional and spread P&L)."""
+    from tradingagents.risk_gate import RiskConfig
+    from tradingagents.signal_edge import evaluate_signal_edge, load_decisions, render_edge_report
+
+    try:
+        ticker, signals = load_decisions(results_dir)
+    except (OSError, KeyError, ValueError) as exc:
+        console.print(f"[red]Error:[/red] cannot read decisions from {results_dir}: {exc}")
+        raise typer.Exit(code=1) from None
+    if not signals:
+        console.print("[red]Error:[/red] no completed decisions found.")
+        raise typer.Exit(code=1)
+    report = evaluate_signal_edge(
+        ticker, signals, horizon=horizon, n_perm=permutations,
+        risk_cfg=RiskConfig(account_size=account_size),
+    )
+    console.print(Markdown(render_edge_report(report)))
+
+
 if __name__ == "__main__":
     app()
