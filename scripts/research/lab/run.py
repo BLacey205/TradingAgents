@@ -87,6 +87,8 @@ def report(s: harness.Strategy, result: dict) -> str:
 def cmd_test(args) -> None:
     s = load_strategy(args.strategy)
     records = ledger.load()
+    if args.final and args.no_log:
+        raise SystemExit("--final must be logged: the ledger is what keeps the holdout to one use.")
     if args.final and ledger.holdout_used(s.name, records):
         raise SystemExit(f"The holdout for {s.name} was already opened; it can be scored once.")
     for r in ledger.similar(s.tags, s.hypothesis, records, name=s.name):

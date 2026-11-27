@@ -65,12 +65,12 @@ Change a rule only in its own commit that says why, never to rescue a strategy.
 ## Ledger so far (Nov 27, 2026)
 
 Seven earlier tests were added by hand (`source: manual`). Two new ideas ran
-through the harness, first under rules v1 and again under v2 (both records kept):
+through the harness under rules v1, again under v2, and again after a fix that charges each trade its own exit cost (all records kept):
 
 | Strategy | Verdict | Why |
 |---|---|---|
 | `spy_sma200_trend`: hold SPY only above its 200-day average | Fail | Only 18 trades in the 2014-2020 test; Sharpe 0.63 vs buy-and-hold 0.68; made money in 58% of years; deflated Sharpe 0.52 |
-| `spy_rsi2_reversion`: buy 2-day dips in uptrends, sell the bounce | Fail | Won 70% of 152 test trades but lost 2.3% after costs; deflated Sharpe 0.07; even with zero costs its Sharpe (0.27) trailed buy-and-hold (0.68) |
+| `spy_rsi2_reversion`: buy 2-day dips in uptrends, sell the bounce | Fail | Won 69% of 152 test trades but lost 2.3% after costs; deflated Sharpe 0.07; even with zero costs its Sharpe (0.27) trailed buy-and-hold (0.68) |
 
 Both beat buy-and-hold only in sideways markets during the test years.
 

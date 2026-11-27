@@ -194,3 +194,38 @@ def test_years_and_regimes_are_reported_and_a_one_year_wonder_fails():
     rets = np.where(np.arange(n) < 260, 0.01, -0.0004)
     lucky = harness.evaluate(_strategy(first_year_only, cost_bps=0), _bars(rets), n_tested=1)
     assert any("years" in r for r in lucky["segments"][1]["reasons"])
+
+
+@pytest.mark.unit
+def test_each_trade_pays_its_own_exit_cost():
+    bars = _bars([0.01, 0.02, 0.0, 0.0])
+    target = pd.Series([1.0, 1.0, 0.0, 0.0, 0.0], index=bars.index)
+    frame = harness.net_returns(bars["Close"], target, cost_bps=10)
+    (trade,) = harness.trade_returns(frame)
+    # entry cost, +1%, +2%, exit cost: all inside the one trade
+    assert trade == pytest.approx((1 + 0.01 - 0.001) * 1.02 * (1 - 0.001) - 1)
+    # a flip pays exit on the old side and entry on the new one, once each
+    flip = harness.net_returns(
+        bars["Close"], pd.Series([1.0, -1.0, -1.0, 0.0, 0.0], index=bars.index), cost_bps=10
+    )
+    first, second = harness.trade_returns(flip)
+    assert first == pytest.approx((1 + 0.01 - 0.001) * (1 - 0.001) - 1)
+    assert second == pytest.approx((1 - 0.02 - 0.001) * 1.0 * (1 - 0.001) - 1)
+
+
+@pytest.mark.unit
+def test_sealed_holdout_bars_never_leave_a_normal_run():
+    bars = _bars(np.random.default_rng(2).normal(0, 0.01, 1000))
+    strat = _strategy(lambda b: (b["Close"] > b["Close"].rolling(10).mean()).astype(float))
+    normal = harness.evaluate(strat, bars, n_tested=1)
+    _, holdout_start = harness.split_points(len(bars), harness.Rules())
+    assert len(normal["frame"]) == holdout_start
+    assert len(harness.evaluate(strat, bars, n_tested=1, final=True)["frame"]) == len(bars)
+
+
+@pytest.mark.unit
+def test_final_cannot_skip_the_ledger():
+    import run
+
+    with pytest.raises(SystemExit, match="must be logged"):
+        run.main(["test", "spy_sma200_trend", "--final", "--no-log"])

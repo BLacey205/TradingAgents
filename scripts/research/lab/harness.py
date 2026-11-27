@@ -115,22 +115,30 @@ def net_returns(close: pd.Series, target: pd.Series, cost_bps: float) -> pd.Data
     ret = close.pct_change().fillna(0.0)
     turnover = held.diff().abs()
     turnover.iloc[0] = abs(held.iloc[0])
-    net = held * ret - turnover * cost_bps / 1e4
-    return pd.DataFrame({"held": held, "ret": ret, "net": net})
+    rate = cost_bps / 1e4
+    net = held * ret - turnover * rate
+    return pd.DataFrame({"held": held, "ret": ret, "net": net, "rate": rate})
 
 
 def trade_returns(frame: pd.DataFrame) -> list[float]:
-    """Compounded return of each trade: a run of bars held on the same side."""
-    side = np.sign(frame["held"].to_numpy())
-    net = frame["net"].to_numpy()
-    out, cur, acc = [], 0.0, 1.0
-    for s, r in zip(side, net, strict=True):
+    """Compounded return of each trade: a run of bars held on the same side. A trade
+    pays its own exit cost, which lands on the bar where the position changes."""
+    held = frame["held"].to_numpy(dtype=float)
+    net = frame["net"].to_numpy(dtype=float)
+    rate = frame["rate"].to_numpy(dtype=float) if "rate" in frame else np.zeros(len(held))
+    side = np.sign(held)
+    out, cur, acc, prev = [], 0.0, 1.0, 0.0
+    for i, s in enumerate(side):
         if s != cur:
+            exit_cost = abs(prev) * rate[i]
             if cur != 0:
-                out.append(acc - 1)
+                out.append(acc * (1 - exit_cost) - 1)
             cur, acc = s, 1.0
-        if s != 0:
-            acc *= 1 + r
+            if s != 0:
+                acc *= 1 + net[i] + exit_cost  # the new trade pays only its entry
+        elif s != 0:
+            acc *= 1 + net[i]
+        prev = held[i]
     if cur != 0:
         out.append(acc - 1)
     return out
@@ -350,5 +358,6 @@ def evaluate(
         "deflated_sharpe": dsr,
         "test_regimes": test_regimes,
         "beats_buy_and_hold_in": beats,
-        "frame": frame,
+        # Without --final the sealed holdout bars never leave this function.
+        "frame": frame if final else frame.iloc[:b],
     }
