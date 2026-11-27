@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f6c74">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TradingAgents">
+  <title>TradingAgents</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>TradingAgents</h1>
+      <p class="tag">A team of AI analysts studies one stock or coin. Research, not advice.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="lock" class="card" hidden>
+      <h2>Enter passcode</h2>
+      <p class="muted">This server is private. The passcode is set where the server runs.</p>
+      <form id="lock-form" class="row">
+        <input id="passcode" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode">
+        <button type="submit">Unlock</button>
+      </form>
+      <p id="lock-error" class="error" hidden></p>
+    </section>
+
+    <div id="app" hidden>
+      <section class="card">
+        <form id="analyze-form">
+          <label for="query" class="label">Ticker or link</label>
+          <div class="row">
+            <input id="query" type="text" inputmode="text" autocapitalize="characters" autocomplete="off"
+                   spellcheck="false" placeholder="NVDA, BTC-USD, or paste a link">
+            <button id="analyze-btn" type="submit">Analyze</button>
+          </div>
+          <p class="hint">Works with links from Yahoo Finance, Robinhood, TradingView, Google Finance, CNBC and Coinbase.</p>
+          <p id="analyze-error" class="error" hidden></p>
+        </form>
+      </section>
+
+      <section id="trust" class="note" hidden></section>
+
+      <section id="job" class="card" hidden>
+        <div class="card-head">
+          <h2 id="job-title">Analyzing</h2>
+          <span id="job-elapsed" class="muted num"></span>
+        </div>
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="job-bar"></span></div>
+        <ol id="job-stages" class="stages"></ol>
+        <p id="job-note" class="muted">A full analysis takes about 5 to 10 minutes. You can close this page; it keeps running.</p>
+        <p id="job-error" class="error" hidden></p>
+      </section>
+
+      <section id="result" class="card" hidden>
+        <div class="card-head">
+          <div>
+            <h2 id="res-ticker"></h2>
+            <p id="res-meta" class="muted"></p>
+          </div>
+          <div class="verdict">
+            <span id="res-rating" class="chip"></span>
+            <span id="res-confidence" class="muted num"></span>
+          </div>
+        </div>
+        <div id="res-decision" class="md"></div>
+        <div id="res-reports" class="reports"></div>
+
+        <div class="ask">
+          <h3>Ask about this analysis</h3>
+          <div id="qa" class="qa"></div>
+          <form id="ask-form" class="row">
+            <input id="question" type="text" autocomplete="off" placeholder="Why this rating? What's the biggest risk?" aria-label="Question">
+            <button id="ask-btn" type="submit">Ask</button>
+          </form>
+          <p id="ask-error" class="error" hidden></p>
+        </div>
+        <button id="refresh-btn" class="link" type="button">Run a fresh analysis</button>
+      </section>
+
+      <section id="history-card" class="card" hidden>
+        <h2>Recent analyses</h2>
+        <ul id="history" class="history"></ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Ratings come from AI models and can be wrong. In testing they were right about half the time. Not financial advice.</p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
