@@ -151,3 +151,46 @@ def test_seed_ledger_holds_every_past_test():
     names = {r["name"] for r in records}
     assert {"opening_range_breakout", "harry_sharp_bias", "tradingagents_free_model"} <= names
     assert all(r["verdict"] in {"pass", "fail"} for r in records)
+
+
+@pytest.mark.unit
+def test_deflated_sharpe_raises_the_bar_with_more_trials():
+    rng = np.random.default_rng(3)
+    modest = pd.Series(rng.normal(0.0006, 0.01, 1250))  # about Sharpe 0.95 a year
+    one = harness.deflated_sharpe(modest, 1)
+    many = harness.deflated_sharpe(modest, 200)
+    assert one["noise_bar_per_bar"] == 0.0
+    assert many["noise_bar_per_bar"] > 0
+    assert many["dsr"] < one["dsr"]
+    noise = harness.deflated_sharpe(pd.Series(rng.normal(0, 0.01, 1250)), 20)
+    assert noise["dsr"] < 0.95
+    strong = harness.deflated_sharpe(pd.Series(rng.normal(0.003, 0.01, 1250)), 20)
+    assert strong["dsr"] > 0.95
+
+
+@pytest.mark.unit
+def test_longest_underwater_counts_calendar_days_from_the_peak():
+    idx = pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-10", "2020-02-01", "2020-03-01"])
+    equity = pd.Series([1.0, 1.2, 1.1, 1.15, 1.3], index=idx)
+    # Peak on Jan 2, back above it on Mar 1.
+    assert harness.longest_underwater_days(equity) == (idx[4] - idx[1]).days
+    still_under = pd.Series([1.0, 1.2, 1.1, 1.0, 0.9], index=idx)
+    assert harness.longest_underwater_days(still_under) == (idx[4] - idx[1]).days
+
+
+@pytest.mark.unit
+def test_years_and_regimes_are_reported_and_a_one_year_wonder_fails():
+    # Strategy earns everything in its first year and bleeds afterwards.
+    n = 1500
+    bars = _bars(np.full(n, 0.0005))
+
+    def first_year_only(b):
+        return pd.Series(1.0, index=b.index)
+
+    result = harness.evaluate(_strategy(first_year_only, cost_bps=0), bars, n_tested=1)
+    assert result["years"] and result["years"][0]["year"] == 2000
+    assert set(result["test_regimes"]) <= {"bull", "bear", "sideways"}
+
+    rets = np.where(np.arange(n) < 260, 0.01, -0.0004)
+    lucky = harness.evaluate(_strategy(first_year_only, cost_bps=0), _bars(rets), n_tested=1)
+    assert any("years" in r for r in lucky["segments"][1]["reasons"])

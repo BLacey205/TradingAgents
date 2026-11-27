@@ -29,6 +29,15 @@ class Rules:
     min_trades: int = 30  # fewer trades than this in a segment is too small a sample
     max_drawdown: float = -0.25  # worst peak-to-trough loss allowed in a segment
     alpha: float = 0.05  # one-sided error rate, split across every strategy ever tested
+    # v2 (Nov 27, 2026): three stricter checks added, none loosened
+    min_profitable_years: float = 0.6  # share of calendar years (train + test) that made money
+    min_deflated_sharpe: float = (
+        0.95  # probability the test Sharpe beats the best of N noise trials
+    )
+    regime_ma: int = 200  # moving average that splits bull / bear / sideways markets
+
+
+RULES_VERSION = 2
 
 
 @dataclass
@@ -57,6 +66,7 @@ class Metrics:
     profit_factor: float | None
     exposure: float
     trade_t_stat: float | None
+    longest_underwater_days: int
 
     def as_dict(self) -> dict:
         return {
@@ -126,6 +136,22 @@ def trade_returns(frame: pd.DataFrame) -> list[float]:
     return out
 
 
+def longest_underwater_days(equity: pd.Series) -> int:
+    """Calendar days from a peak to the bar that first got back above it (or the end)."""
+    if len(equity) < 2:
+        return 0
+    below = (equity < equity.cummax()).to_numpy()
+    dates = equity.index
+    longest, start = 0, None
+    for i, under in enumerate(below):
+        if under and start is None:
+            start = i - 1 if i > 0 else 0
+        if start is not None and (not under or i == len(below) - 1):
+            longest = max(longest, (dates[i] - dates[start]).days)
+            start = None
+    return int(longest)
+
+
 def metrics(frame: pd.DataFrame, per_year: float) -> Metrics:
     net = frame["net"]
     equity = (1 + net).cumprod()
@@ -150,7 +176,81 @@ def metrics(frame: pd.DataFrame, per_year: float) -> Metrics:
         profit_factor=(sum(wins) / -sum(losses)) if losses and sum(losses) < 0 else None,
         exposure=float((frame["held"] != 0).mean()),
         trade_t_stat=t_stat,
+        longest_underwater_days=longest_underwater_days(equity),
     )
+
+
+def deflated_sharpe(net: pd.Series, n_trials: int) -> dict:
+    """Bailey & Lopez de Prado (2014) deflated Sharpe ratio, on per-bar (not annual)
+    Sharpe. The bar is the Sharpe the best of ``n_trials`` pure-noise strategies would
+    be expected to reach; with no record of the other trials' Sharpes, their spread is
+    taken as the noise spread of a Sharpe estimate, 1/sqrt(T-1). Returns the
+    probability that the true Sharpe is above that bar."""
+    r = net.dropna().to_numpy(dtype=float)
+    t = len(r)
+    sd = r.std(ddof=1) if t > 1 else 0.0
+    if t < 3 or sd == 0:
+        return {"dsr": 0.0, "sharpe_per_bar": 0.0, "noise_bar_per_bar": 0.0}
+    sr = r.mean() / sd
+    euler = 0.5772156649
+    nd = NormalDist()
+    if n_trials > 1:
+        expected_max_z = (1 - euler) * nd.inv_cdf(1 - 1 / n_trials) + euler * nd.inv_cdf(
+            1 - 1 / (n_trials * math.e)
+        )
+    else:
+        expected_max_z = 0.0
+    sr0 = expected_max_z / math.sqrt(t - 1)
+    z = (r - r.mean()) / sd
+    skew, kurt = float((z**3).mean()), float((z**4).mean())
+    denom = math.sqrt(max(1e-12, 1 - skew * sr + (kurt - 1) / 4 * sr**2))
+    dsr = nd.cdf((sr - sr0) * math.sqrt(t - 1) / denom)
+    return {
+        "dsr": round(dsr, 4),
+        "sharpe_per_bar": round(sr, 5),
+        "noise_bar_per_bar": round(sr0, 5),
+    }
+
+
+def yearly(frame: pd.DataFrame, bench: pd.DataFrame, min_bars: int = 50) -> list[dict]:
+    """Walk-forward view: each calendar year scored on its own. The strategies have no
+    fitted parameters, so every year is out of sample for the rule itself; judging by
+    the spread of years catches an edge that came from one lucky stretch."""
+    rows = []
+    for year, part in frame.groupby(frame.index.year):
+        if len(part) < min_bars:
+            continue
+        b = bench.loc[part.index]
+        rows.append(
+            {
+                "year": int(year),
+                "return": round(float((1 + part["net"]).prod() - 1), 4),
+                "buy_and_hold": round(float((1 + b["net"]).prod() - 1), 4),
+            }
+        )
+    return rows
+
+
+def regimes(close: pd.Series, frame: pd.DataFrame, bench: pd.DataFrame, ma: int) -> dict:
+    """Return by market regime, labelled from information known before each bar:
+    bull = price above a rising average, bear = below a falling one, else sideways."""
+    sma = close.rolling(ma).mean()
+    rising = sma > sma.shift(20)
+    label = pd.Series("sideways", index=close.index)
+    label[(close > sma) & rising] = "bull"
+    label[(close < sma) & ~rising & sma.notna()] = "bear"
+    label = label.shift(1).reindex(frame.index).fillna("sideways")
+    out = {}
+    for name in ("bull", "bear", "sideways"):
+        mask = label == name
+        if mask.sum() == 0:
+            continue
+        out[name] = {
+            "bars": int(mask.sum()),
+            "return": round(float((1 + frame["net"][mask]).prod() - 1), 4),
+            "buy_and_hold": round(float((1 + bench["net"][mask]).prod() - 1), 4),
+        }
+    return out
 
 
 def check_causal(signal: Callable[[pd.DataFrame], pd.Series], bars: pd.DataFrame) -> None:
@@ -219,11 +319,36 @@ def evaluate(
             Segment(name, str(idx[0].date()), str(idx[-1].date()), m, bm, not reasons, reasons)
         )
     seg = {s.name: s for s in segments}
+
+    # v2 checks: every calendar year so far, deflated Sharpe, regimes (report only).
+    years = yearly(frame.iloc[:b], bench.iloc[:b])
+    profitable = sum(1 for y in years if y["return"] > 0) / len(years) if years else 0.0
+    if profitable < rules.min_profitable_years:
+        seg["test"].reasons.append(
+            f"made money in only {profitable:.0%} of years (needs {rules.min_profitable_years:.0%})"
+        )
+    dsr = deflated_sharpe(frame["net"].iloc[a:b], n_tested)
+    if dsr["dsr"] < rules.min_deflated_sharpe:
+        seg["test"].reasons.append(
+            f"deflated Sharpe {dsr['dsr']:.2f} is below {rules.min_deflated_sharpe:.2f} "
+            f"for {n_tested} strategies tested"
+        )
+    seg["test"].passed = not seg["test"].reasons
+    test_regimes = regimes(close, frame.iloc[a:b], bench.iloc[a:b], rules.regime_ma)
+    beats = [k for k, v in test_regimes.items() if v["return"] > v["buy_and_hold"]]
+
     passed = seg["train"].passed and seg["test"].passed and (not final or seg["holdout"].passed)
     return {
         "verdict": "pass" if passed else "fail",
+        "rules_version": RULES_VERSION,
         "t_required": round(t_needed, 2),
         "strategies_counted": n_tested,
         "segments": [s.as_dict() for s in segments],
+        "years": years,
+        "profitable_years": round(profitable, 3),
+        "worst_year": min(years, key=lambda y: y["return"]) if years else None,
+        "deflated_sharpe": dsr,
+        "test_regimes": test_regimes,
+        "beats_buy_and_hold_in": beats,
         "frame": frame,
     }

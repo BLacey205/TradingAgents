@@ -63,8 +63,24 @@ def report(s: harness.Strategy, result: dict) -> str:
             f"return {pct(m['total_return'])} vs hold {pct(b['total_return'])}  "
             f"Sharpe {m['sharpe']:.2f} vs {b['sharpe']:.2f}  maxDD {m['max_drawdown']:.0%}"
         )
+        out.append(f"          longest time underwater {m['longest_underwater_days']} days")
         for reason in seg["reasons"]:
             out.append(f"            fail: {reason}")
+    w = result["worst_year"]
+    out.append(
+        f"  years     made money in {result['profitable_years']:.0%} of {len(result['years'])}"
+        + (f"; worst {w['year']} {pct(w['return'])} (hold {pct(w['buy_and_hold'])})" if w else "")
+    )
+    d = result["deflated_sharpe"]
+    out.append(f"  deflated  Sharpe probability {d['dsr']:.2f} (needs 0.95)")
+    regs = ", ".join(
+        f"{k} {pct(v['return'])} vs hold {pct(v['buy_and_hold'])}"
+        for k, v in result["test_regimes"].items()
+    )
+    out.append(f"  regimes   (test) {regs}")
+    beats = result["beats_buy_and_hold_in"]
+    if len(beats) == 1:
+        out.append(f"            note: beats buy-and-hold only in {beats[0]} markets")
     return "\n".join(out)
 
 
@@ -101,6 +117,11 @@ def cmd_test(args) -> None:
                 "why": "; ".join(failed) if failed else "passed every rule",
                 "segments": result["segments"],
                 "t_required": result["t_required"],
+                "rules_version": result["rules_version"],
+                "profitable_years": result["profitable_years"],
+                "worst_year": result["worst_year"],
+                "deflated_sharpe": result["deflated_sharpe"]["dsr"],
+                "test_regimes": result["test_regimes"],
             }
         )
 

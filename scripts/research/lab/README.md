@@ -41,18 +41,37 @@ which git ignores. The ledger is the record.
   - kept the worst drawdown above -25%;
   - reached a trade t-stat above a bar that rises with every strategy ever tested
     (Bonferroni: 1.64 for the first, 2.58 by the tenth, 3.09 by the fiftieth), so
-    luck can't win by sheer number of tries.
+    luck can't win by sheer number of tries;
+  - has a **deflated Sharpe** of at least 0.95 (Bailey & López de Prado): the
+    probability its test-period Sharpe beats the best Sharpe that as many
+    pure-noise strategies would be expected to reach (added in rules v2);
+- and across every calendar year of train + test it **made money in at least 60%
+  of years** (walk-forward view, rules v2). The report names the worst year.
+
+Every report also shows, without pass/fail:
+
+- **Longest time underwater**: calendar days from a peak until the strategy got
+  back above it.
+- **Regimes** in the test period: return in bull (price above a rising 200-day
+  average), bear (below a falling one) and sideways markets, against
+  buy-and-hold. A note flags a strategy that beats buy-and-hold in only one.
+
+Strategies here have no fitted parameters, so every year is already out of sample
+for the rule; a strategy that tunes parameters would need a `fit` step re-run on
+each past window before its next year, which the harness doesn't do yet.
 
 Change a rule only in its own commit that says why, never to rescue a strategy.
 
 ## Ledger so far (Nov 27, 2026)
 
 Seven earlier tests were added by hand (`source: manual`). Two new ideas ran
-through the harness:
+through the harness, first under rules v1 and again under v2 (both records kept):
 
 | Strategy | Verdict | Why |
 |---|---|---|
-| `spy_sma200_trend`: hold SPY only above its 200-day average | Fail | Only 18 trades in the 2014-2020 test; Sharpe 0.63 vs buy-and-hold 0.68 |
-| `spy_rsi2_reversion`: buy 2-day dips in uptrends, sell the bounce | Fail | Won 70% of 152 test trades but lost 2.3% after costs; even with zero costs its Sharpe (0.27) trailed buy-and-hold (0.68) |
+| `spy_sma200_trend`: hold SPY only above its 200-day average | Fail | Only 18 trades in the 2014-2020 test; Sharpe 0.63 vs buy-and-hold 0.68; made money in 58% of years; deflated Sharpe 0.52 |
+| `spy_rsi2_reversion`: buy 2-day dips in uptrends, sell the bounce | Fail | Won 70% of 152 test trades but lost 2.3% after costs; deflated Sharpe 0.07; even with zero costs its Sharpe (0.27) trailed buy-and-hold (0.68) |
+
+Both beat buy-and-hold only in sideways markets during the test years.
 
 Both holdouts are still sealed.
