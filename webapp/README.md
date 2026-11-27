@@ -36,7 +36,21 @@ passcode, then use Safari's Share → **Add to Home Screen** to get an app icon.
 | `PORT`, `HOST` | Listen address (defaults `8000`, `127.0.0.1`). |
 | `TRADINGAGENTS_*` | The usual model and provider settings. |
 
-## Host it so the phone can reach it anywhere
+## Host it on Render (free)
+
+`render.yaml` at the repo root is a Render Blueprint for this app. A test analysis
+peaked at about 190 MB of memory, inside the free plan's 512 MB.
+
+1. Sign in at render.com with GitHub and allow access to this repository.
+2. **New → Blueprint**, pick the repository; Render reads `render.yaml`.
+3. Fill in the two secrets it asks for: `GOOGLE_API_KEY` and `WEBAPP_PASSCODE`.
+4. **Apply**. The first build takes a few minutes; the app's address ends in
+   `.onrender.com`.
+
+On the free plan the service sleeps after 15 idle minutes (the next visit takes
+about a minute to wake it), and saved analyses are lost when it restarts.
+
+## Host it elsewhere
 
 Any host that runs a Docker container or a Python web service works. Use the repo's
 `Dockerfile` with the start command `python -m webapp --host 0.0.0.0`, and set the

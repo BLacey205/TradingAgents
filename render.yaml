@@ -1,0 +1,27 @@
+# Render Blueprint for the TradingAgents web app (webapp/).
+# New > Blueprint in the Render dashboard, pick this repo, and Render asks for the
+# two secrets marked `sync: false`; their values never go in this file.
+services:
+  - type: web
+    name: tradingagents
+    runtime: python
+    plan: free  # sleeps after 15 idle minutes; the next visit wakes it (about a minute)
+    branch: main
+    buildCommand: pip install .
+    startCommand: python -m webapp --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: TRADINGAGENTS_LLM_PROVIDER
+        value: google
+      - key: TRADINGAGENTS_DEEP_THINK_LLM
+        value: gemini-3.1-flash-lite
+      - key: TRADINGAGENTS_QUICK_THINK_LLM
+        value: gemini-3.1-flash-lite
+      - key: TRADINGAGENTS_LLM_MAX_RETRIES
+        value: "6"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: WEBAPP_PASSCODE
+        sync: false
